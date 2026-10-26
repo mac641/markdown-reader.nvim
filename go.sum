@@ -1,0 +1,4 @@
+github.com/yuin/goldmark-alert v1.0.1 h1:lokjeUqMGzC9EvKDbZTeE9CvXD7TLjVCNhI3dBBg9cI=
+github.com/yuin/goldmark-alert v1.0.1/go.mod h1:z0Z449RcCz74JsFuGmgE7PqiUiEqUhagQAOgYi/Byxg=
+github.com/yuin/goldmark/v2 v2.1.9 h1:C5AZWQOm71NKdpMapPEYEB/UIRHDiMb3h5AJRHxzkXQ=
+github.com/yuin/goldmark/v2 v2.1.9/go.mod h1:G6M4/qOFtfn01/o14BU1UR2Lo5N3S9Qo7xCuz/sHjGQ=
