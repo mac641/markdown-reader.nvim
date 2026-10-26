@@ -33,11 +33,16 @@ ifdef MISSING_DEPS
 endif
 
 # The Go tests cover everything but the window and need no WebKit, so CI can
-# run them anywhere.
-test:
+# run them anywhere; the plugin tests run against tests/lua/fake-viewer.sh.
+test: test-go test-lua
+
+test-go:
 	$(GO) test ./internal/ipc ./internal/page ./internal/render
+
+test-lua:
+	nvim --headless --clean -l tests/lua/test_plugin.lua
 
 clean:
 	rm -rf bin
 
-.PHONY: all $(BIN) check-deps test clean
+.PHONY: all $(BIN) check-deps test test-go test-lua clean
