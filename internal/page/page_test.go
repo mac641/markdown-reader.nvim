@@ -28,7 +28,7 @@ func TestHTML(t *testing.T) {
 		`<base href="file:///x/">`,
 		"<title>a&lt;b.md</title>",
 		"<main id=\"content\" class=\"markdown-body\">\n<p>hi</p>\n</main>",
-		"window.mdrOpen",
+		"window.mdr = {",
 		".markdown-body",
 	} {
 		if !strings.Contains(got, want) {

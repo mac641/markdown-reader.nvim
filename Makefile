@@ -35,7 +35,7 @@ endif
 # The Go tests cover everything but the window and need no WebKit, so CI can
 # run them anywhere.
 test:
-	$(GO) test ./internal/page ./internal/render
+	$(GO) test ./internal/ipc ./internal/page ./internal/render
 
 clean:
 	rm -rf bin
