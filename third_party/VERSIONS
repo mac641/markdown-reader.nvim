@@ -1,0 +1,2 @@
+# name  repository  tag  commit  tarball-sha256 (managed by scripts/update-vendor.sh)
+webview https://github.com/webview/webview tag=0.12.0 commit=3ab4b5d722438fc8a13e6ca830c5e2372d19a01d sha256=e2c8d0bed3fcd13e624074448b7d3b1d0b0d03546a15839f17ee0013f2cba1db
