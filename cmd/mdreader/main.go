@@ -2,12 +2,17 @@
 //
 //	mdreader [--debug] [--stdin] FILE
 //	mdreader --render-only FILE
+//	mdreader --headings
 //
 // With --stdin the document isn't read from FILE but sent by the editor as
 // messages on stdin (see internal/ipc); FILE then only names the window and
 // is the base for relative URLs, and needn't exist. Clicked links are
 // reported on stdout as "OPEN <url>" lines so the editor can decide how to
 // open them.
+//
+// --headings reads Markdown on stdin and prints "<line> <id>" for each
+// heading, its 1-based line and anchor ID, so the editor can follow links
+// to headings.
 package main
 
 import (
@@ -41,6 +46,7 @@ func init() {
 type viewer struct {
 	wv       *webview.WebView
 	ready    bool    // page.js has loaded and defined window.mdr
+	base     *string // a base URI that arrived before ready
 	pending  *string // the latest content that arrived before ready
 	scroll   *[2]int // the latest line and percent, if any
 	exitCode int
@@ -50,17 +56,40 @@ func main() {
 	debug := flag.Bool("debug", false, "enable the web inspector")
 	fromStdin := flag.Bool("stdin", false, "read the document from stdin messages")
 	renderOnly := flag.Bool("render-only", false, "print the rendered HTML and exit")
+	headings := flag.Bool("headings", false, "print the line and anchor ID of each heading of the Markdown on stdin")
 	flag.Usage = func() {
 		fmt.Fprintln(flag.CommandLine.Output(),
-			"usage: mdreader [--debug] [--stdin] FILE\n       mdreader --render-only FILE")
+			"usage: mdreader [--debug] [--stdin] FILE\n       mdreader --render-only FILE\n       mdreader --headings")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *headings {
+		if flag.NArg() != 0 || *debug || *fromStdin || *renderOnly {
+			flag.Usage()
+			os.Exit(2)
+		}
+		os.Exit(printHeadings())
+	}
 	if flag.NArg() != 1 || (*renderOnly && *fromStdin) {
 		flag.Usage()
 		os.Exit(2)
 	}
 	os.Exit(run(flag.Arg(0), *debug, *fromStdin, *renderOnly))
+}
+
+func printHeadings() int {
+	md, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return fail(err)
+	}
+	out := bufio.NewWriter(os.Stdout)
+	for _, h := range render.Headings(md) {
+		fmt.Fprintf(out, "%d %s\n", h.Line, h.ID)
+	}
+	if err := out.Flush(); err != nil {
+		return fail(err)
+	}
+	return 0
 }
 
 func run(path string, debug, fromStdin, renderOnly bool) int {
@@ -79,12 +108,10 @@ func run(path string, debug, fromStdin, renderOnly bool) int {
 		return 0
 	}
 
-	abs, err := absolutePath(path)
+	title, baseURI, err := describe(path)
 	if err != nil {
 		return fail(err)
 	}
-	title := filepath.Base(abs)
-	baseURI := page.FileURI(filepath.Dir(abs), true)
 
 	wv, err := webview.New(debug)
 	if err != nil {
@@ -116,6 +143,16 @@ func run(path string, debug, fromStdin, renderOnly bool) int {
 func fail(err error) int {
 	fmt.Fprintln(os.Stderr, "mdreader:", err)
 	return 1
+}
+
+// describe returns the window title for a document at path and the base
+// URI for its relative URLs.
+func describe(path string) (title, baseURI string, err error) {
+	abs, err := absolutePath(path)
+	if err != nil {
+		return "", "", err
+	}
+	return filepath.Base(abs), page.FileURI(filepath.Dir(abs), true), nil
 }
 
 // absolutePath is like filepath.Abs, but resolves symlinks if path exists.
@@ -154,6 +191,13 @@ func (v *viewer) readStdin() {
 				continue
 			}
 			v.wv.Dispatch(func() { v.showContent(html) })
+		case ipc.File:
+			title, baseURI, err := describe(msg.Path)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "mdreader:", err)
+				continue
+			}
+			v.wv.Dispatch(func() { v.showFile(title, baseURI) })
 		case ipc.Scroll:
 			line, percent := msg.Line, msg.Percent
 			v.wv.Dispatch(func() { v.showScroll(line, percent) })
@@ -170,6 +214,20 @@ func (v *viewer) waitSignal() {
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 	<-sigs
 	v.wv.Dispatch(func() { v.quit(0) })
+}
+
+func (v *viewer) showFile(title, baseURI string) {
+	v.wv.SetTitle(title)
+	v.setBase(baseURI)
+}
+
+func (v *viewer) setBase(baseURI string) {
+	if !v.ready {
+		v.base = &baseURI
+		return
+	}
+	js, _ := json.Marshal(baseURI)
+	v.wv.Eval("mdr.setBase(" + string(js) + ");")
 }
 
 func (v *viewer) showContent(html string) {
@@ -202,6 +260,10 @@ func (v *viewer) quit(code int) {
 func (v *viewer) onReady() {
 	v.ready = true
 	v.wv.Cleanup()
+	if v.base != nil {
+		v.setBase(*v.base)
+		v.base = nil
+	}
 	if v.pending != nil {
 		v.showContent(*v.pending)
 		v.pending = nil

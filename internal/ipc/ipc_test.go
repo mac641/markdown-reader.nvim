@@ -12,6 +12,7 @@ func reader(s string) *bufio.Reader { return bufio.NewReader(strings.NewReader(s
 
 func TestSequence(t *testing.T) {
 	r := reader("CONTENT 7\n# hi\nyo\n" +
+		"FILE 10\n/a b/ü.md\n" +
 		"SCROLL 12 40\r\n" +
 		"\n" +
 		"SCROLL 3\n" +
@@ -19,6 +20,7 @@ func TestSequence(t *testing.T) {
 
 	want := []Message{
 		{Kind: Content, Text: []byte("# hi\nyo")},
+		{Kind: File, Path: "/a b/ü.md"},
 		{Kind: Scroll, Line: 12, Percent: 40},
 		{Kind: Scroll, Line: 3},
 		{Kind: Quit},
@@ -28,7 +30,7 @@ func TestSequence(t *testing.T) {
 		if err != nil {
 			t.Fatalf("message %d: %v", i, err)
 		}
-		if m.Kind != w.Kind || string(m.Text) != string(w.Text) || m.Line != w.Line || m.Percent != w.Percent {
+		if m.Kind != w.Kind || string(m.Text) != string(w.Text) || m.Path != w.Path || m.Line != w.Line || m.Percent != w.Percent {
 			t.Errorf("message %d: got %+v, want %+v", i, m, w)
 		}
 	}
@@ -56,6 +58,10 @@ func TestErrors(t *testing.T) {
 		"CONTENT +1\n",
 		"CONTENT 99999999999999999999\n",
 		"CONTENT 5x\n",
+		"FILE 0\n",
+		"FILE 3\na\x00b",
+		"FILE 4097\n",
+		"FILE 5\n/a",
 		"SCROLL\n",
 		"SCROLL 1 101\n",
 		"SCROLL 1 2 3\n",

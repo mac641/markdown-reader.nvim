@@ -4,6 +4,11 @@
 #   MDR_FAKE_OPEN=<url>   print "OPEN <url>" on start
 #   MDR_FAKE_FAIL=1       complain on stderr and exit 3 right away
 #   MDR_FAKE_STUBBORN=1   after stdin EOF, ignore SIGTERM and keep running
+if [ "$1" = --headings ]; then
+  # Like mdreader --headings, for plain ATX headings only.
+  awk '/^#+ / { sub(/^#+ /, ""); gsub(/ /, "-"); print NR, tolower($0) }'
+  exit 0
+fi
 if [ "$MDR_FAKE_FAIL" = 1 ]; then
   echo "fake viewer failed" >&2
   exit 3

@@ -4,6 +4,7 @@ local Viewer = require("markdown-reader.viewer")
 local M = {}
 
 ---@class markdown-reader.State
+---@field buf integer the buffer shown; changes when a link is followed
 ---@field viewer markdown-reader.Viewer
 ---@field augroup integer
 ---@field timer uv.uv_timer_t debounces content updates
@@ -84,20 +85,6 @@ local function schedule_content(buf)
   )
 end
 
----@param line string
-local function on_viewer_line(line)
-  local url = line:match("^OPEN (.+)$")
-  if not url then
-    return
-  end
-  local path = url:match("^file://") and vim.uri_to_fname((url:gsub("#.*$", "")))
-  if path and (path:match("%.md$") or path:match("%.markdown$")) then
-    vim.cmd.edit(vim.fn.fnameescape(path))
-  else
-    vim.ui.open(url)
-  end
-end
-
 --- Forgets buf's viewer without stopping it.
 local function detach(buf)
   local state = states[buf]
@@ -110,7 +97,17 @@ local function detach(buf)
   state.timer:close()
 end
 
+---@param buf integer
+---@return string
+local function document_name(buf)
+  -- The viewer only uses the name for its title and to resolve relative
+  -- links and images, so an unnamed buffer gets one in the cwd.
+  local name = vim.api.nvim_buf_get_name(buf)
+  return name ~= "" and name or vim.fn.getcwd() .. "/untitled.md"
+end
+
 local function attach_autocmds(buf, state)
+  state.augroup = vim.api.nvim_create_augroup("markdown-reader." .. buf, { clear = true })
   local group = state.augroup
   local events = config.options.live and { "TextChanged", "TextChangedI", "TextChangedP" }
     or { "BufWritePost" }
@@ -137,6 +134,97 @@ local function attach_autocmds(buf, state)
   })
 end
 
+--- Moves a viewer from its buffer to buf, which then shows in it.
+---@param state markdown-reader.State
+---@param buf integer
+local function retarget(state, buf)
+  pcall(vim.api.nvim_del_augroup_by_id, state.augroup)
+  states[state.buf] = nil
+  state.buf = buf
+  state.last_scroll = nil
+  states[buf] = state
+  attach_autocmds(buf, state)
+  state.viewer:file(document_name(buf))
+  push_content(buf)
+  push_scroll(buf, true)
+end
+
+--- The 1-based line of the heading with anchor ID id in buf, using the
+--- viewer's own IDs so both sides agree.
+---@param buf integer
+---@param id string
+---@return integer?
+local function find_heading(buf, id)
+  local bin = find_binary()
+  if not bin then
+    return nil
+  end
+  local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n") .. "\n"
+  local ok, res = pcall(function()
+    return vim.system({ bin, "--headings" }, { stdin = text, text = true }):wait(2000)
+  end)
+  if not ok or res.code ~= 0 then
+    return nil
+  end
+  for line, heading in res.stdout:gmatch("(%d+) ([^\n]*)") do
+    if heading == id then
+      return tonumber(line)
+    end
+  end
+end
+
+--- Follows a link clicked in state's viewer: Markdown files open in the
+--- window showing the previewed buffer, at the linked heading if there is
+--- one, and the viewer moves along; everything else goes to vim.ui.open.
+---@param state markdown-reader.State
+---@param url string
+local function follow_link(state, url)
+  local file, fragment = url:match("^(file://[^#]*)#?(.*)$")
+  local path = file and vim.uri_to_fname(file)
+  if not (path and (path:match("%.md$") or path:match("%.markdown$"))) then
+    vim.ui.open(url)
+    return
+  end
+
+  local win = vim.fn.bufwinid(state.buf)
+  if win == -1 then
+    win = vim.api.nvim_get_current_win()
+  end
+  -- :edit of the file already shown would fail if it has unsaved changes.
+  if vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win)) ~= vim.fn.fnamemodify(path, ":p") then
+    local ok, err = pcall(vim.api.nvim_win_call, win, function()
+      vim.cmd.edit(vim.fn.fnameescape(path))
+    end)
+    if not ok then
+      notify(tostring(err), vim.log.levels.ERROR)
+      return
+    end
+  end
+  local buf = vim.api.nvim_win_get_buf(win)
+
+  if fragment ~= "" then
+    local id = vim.uri_decode(fragment)
+    local line = find_heading(buf, id)
+    if line then
+      vim.api.nvim_win_set_cursor(win, { line, 0 })
+      vim.api.nvim_win_call(win, function()
+        vim.cmd("normal! zt")
+      end)
+    else
+      notify(("no heading #%s in %s"):format(id, vim.fn.fnamemodify(path, ":~:.")), vim.log.levels.WARN)
+    end
+  end
+
+  if buf == state.buf then
+    push_scroll(buf, true)
+  elseif states[buf] then
+    -- buf has a preview of its own already.
+    M.close(state.buf)
+  else
+    retarget(state, buf)
+  end
+end
+
 --- Opens a preview of buf (default: current buffer).
 ---@param buf? integer
 function M.open(buf)
@@ -150,24 +238,23 @@ function M.open(buf)
     return
   end
 
-  -- The viewer only uses the name for its title and to resolve relative
-  -- links and images, so an unnamed buffer gets one in the cwd.
-  local name = vim.api.nvim_buf_get_name(buf)
-  if name == "" then
-    name = vim.fn.getcwd() .. "/untitled.md"
-  end
   local cmd = { bin, "--stdin" }
   if config.options.debug then
     table.insert(cmd, "--debug")
   end
-  table.insert(cmd, name)
+  table.insert(cmd, document_name(buf))
 
-  local state = {}
+  local state = { buf = buf }
   local viewer, start_err = Viewer.start(cmd, {
-    on_line = on_viewer_line,
+    on_line = function(line)
+      local url = line:match("^OPEN (.+)$")
+      if url and states[state.buf] == state then
+        follow_link(state, url)
+      end
+    end,
     on_exit = function(code, signal, stderr)
-      if states[buf] == state then
-        detach(buf)
+      if states[state.buf] == state then
+        detach(state.buf)
       end
       if not state.viewer.closing and (code ~= 0 or signal ~= 0) then
         local how = signal ~= 0 and ("signal %d"):format(signal) or ("code %d"):format(code)
@@ -180,7 +267,6 @@ function M.open(buf)
     return
   end
   state.viewer = viewer
-  state.augroup = vim.api.nvim_create_augroup("markdown-reader." .. buf, { clear = true })
   state.timer = assert(vim.uv.new_timer())
   states[buf] = state
 

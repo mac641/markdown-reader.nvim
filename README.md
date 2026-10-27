@@ -7,8 +7,9 @@ type and scrolls along with your cursor.
 - Syntax highlighting of fenced code blocks, in GitHub's colors
 - Live updates while typing (debounced), or on `:write` only
 - Cursor following: the line under the cursor sits at the same height in the preview as in the Neovim window
-- Relative images and links resolve against the file's directory; clicked links to Markdown files open in Neovim, all
-  others in your default application
+- Links: relative images and links resolve against the file's directory, `#heading` links scroll the preview, links to
+  other Markdown files open in Neovim at the linked heading and the preview follows, all others open in your default
+  application
 - One preview window per buffer, closed together with the buffer or Neovim
 - Light and dark theme, following the system setting
 
@@ -186,6 +187,7 @@ Run `make` again after changing Go code; Lua changes take effect after restartin
 ```sh
 bin/mdreader tests/fixtures/sample.md                 # show a file
 bin/mdreader --render-only tests/fixtures/sample.md   # print the HTML body
+bin/mdreader --headings < tests/fixtures/sample.md    # line and anchor ID of each heading
 bin/mdreader --debug tests/fixtures/sample.md         # with the web inspector
 ```
 
@@ -270,6 +272,7 @@ exist. Messages on stdin:
 | ----------------------------- | --------------------------------------------------------------------------------- |
 | `CONTENT <n>\n` + n bytes     | replace the document with these n bytes of Markdown                               |
 | `SCROLL <line> [<percent>]\n` | show source line `<line>` (1-based) `<percent>` of the window height from the top |
+| `FILE <n>\n` + n bytes        | the document is now the file at this path: new window title and base for URLs     |
 | `QUIT\n`                      | close the window                                                                  |
 
 End of input also closes the window, so the viewer never outlives Neovim. Anything malformed makes it exit with status 1
@@ -321,9 +324,14 @@ Positions are cached until the content, window size or a loaded image changes th
 ### Links
 
 `page.js` intercepts every click on a link. `#anchor` links scroll within the page; everything else is resolved against
-`<base>` and sent to the viewer through the `window.mdrOpen` binding, which prints `OPEN <url>`. The plugin opens
-`file://` URLs of `.md`/`.markdown` files with `:edit` and hands everything else to `vim.ui.open`. The viewer itself
-never navigates away.
+`<base>` and sent to the viewer through the `window.mdrOpen` binding, which prints `OPEN <url>`. The viewer itself never
+navigates away.
+
+The plugin hands everything but `file://` URLs of `.md`/`.markdown` files to `vim.ui.open`. Those it opens with `:edit`
+in the window showing the previewed buffer. If the URL has a `#fragment`, it asks `mdreader --headings` for the lines
+and IDs of the file's headings, so that Neovim and the preview agree on IDs, and puts the cursor on the matching one.
+Then the preview moves to the new buffer: the plugin sends `FILE` with its path, which changes the window title and the
+page's `<base>`, and its content. If that buffer already has a preview of its own, the clicked one closes instead.
 
 ### Shutdown
 

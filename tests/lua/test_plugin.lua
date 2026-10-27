@@ -207,6 +207,65 @@ test("OPEN lines open URLs and Markdown files", function()
   vim.ui.open = ui_open
 end)
 
+test("links to headings jump there, and the preview follows", function()
+  local other = root .. "/tests/fixtures/other.md"
+  vim.env.MDR_FAKE_OPEN = "file://" .. other .. "#back-to-the-sample"
+  local from = scratch({ "x" })
+  mr.open()
+  check(vim.wait(2000, function()
+    return vim.api.nvim_buf_get_name(0) == other
+  end, 10), "did not :edit " .. other)
+  vim.env.MDR_FAKE_OPEN = nil
+  local buf = vim.api.nvim_get_current_buf()
+  check(vim.api.nvim_win_get_cursor(0)[1] == 5, "cursor on line " .. vim.api.nvim_win_get_cursor(0)[1])
+  check(mr.is_open(buf) and not mr.is_open(from), "the preview did not move to the new buffer")
+  wait_log("CONTENT %d+\n# Other file\n")
+  check(read_log():find(("FILE %d\n%s\n"):format(#other, other), 1, true) ~= nil, "no FILE: " .. read_log())
+  -- The preview now follows the new buffer.
+  vim.api.nvim_buf_set_lines(buf, 0, 1, false, { "# Changed" })
+  vim.cmd.doautocmd("TextChanged")
+  wait_log("CONTENT %d+\n# Changed\n")
+end)
+
+test("a link to a missing heading says so", function()
+  notes = {}
+  vim.env.MDR_FAKE_OPEN = "file://" .. root .. "/tests/fixtures/other.md#nope"
+  mr.open(scratch({ "x" }))
+  vim.wait(2000, function()
+    return #notes > 0
+  end, 10)
+  vim.env.MDR_FAKE_OPEN = nil
+  check(notes[1] and notes[1].msg:find("no heading #nope", 1, true), "notes: " .. vim.inspect(notes))
+end)
+
+test("a link within the same file only moves the cursor", function()
+  local buf = scratch({ "x", "", "## Far down", "y" })
+  vim.bo[buf].modified = true -- :edit would fail
+  vim.env.MDR_FAKE_OPEN = "file://" .. vim.api.nvim_buf_get_name(buf) .. "#far-down"
+  mr.open()
+  check(vim.wait(2000, function()
+    return vim.api.nvim_win_get_cursor(0)[1] == 3
+  end, 10), "cursor did not move")
+  vim.env.MDR_FAKE_OPEN = nil
+  check(vim.api.nvim_get_current_buf() == buf and mr.is_open(buf), "buffer or preview changed")
+  check(not read_log():find("FILE", 1, true), "sent FILE: " .. read_log())
+end)
+
+test("a link to a file with its own preview closes the clicked one", function()
+  local other = root .. "/tests/fixtures/other.md"
+  vim.cmd.edit(other)
+  local target = vim.api.nvim_get_current_buf()
+  mr.open()
+  vim.env.MDR_FAKE_OPEN = "file://" .. other
+  local from = scratch({ "x" })
+  mr.open()
+  check(vim.wait(2000, function()
+    return not mr.is_open(from)
+  end, 10), "clicked preview still open")
+  vim.env.MDR_FAKE_OPEN = nil
+  check(mr.is_open(target), "the file's own preview closed")
+end)
+
 test("missing binary is reported", function()
   mr.setup({ binary = "/nonexistent/mdreader" })
   notes = {}

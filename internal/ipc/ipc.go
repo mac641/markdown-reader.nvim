@@ -3,6 +3,10 @@
 // Each message starts with a header line:
 //
 //	CONTENT <nbytes>\n<nbytes of Markdown>   replace the document
+//	FILE <nbytes>\n<nbytes of path>          the document is now this file:
+//	                                         its name is the window title
+//	                                         and its directory the base of
+//	                                         relative URLs
 //	SCROLL <line> [<percent>]\n              show source line <line> (1-based)
 //	                                         <percent> of the window height
 //	                                         from the top
@@ -25,6 +29,9 @@ import (
 // MaxContent is the largest document accepted, in bytes.
 const MaxContent = 256 << 20
 
+// maxPath is the longest FILE path accepted, in bytes (Linux's PATH_MAX).
+const maxPath = 4096
+
 // maxHeader bounds a header line, including its newline, so that garbage
 // on stdin is reported instead of buffered.
 const maxHeader = 64
@@ -33,6 +40,7 @@ type Kind int
 
 const (
 	Content Kind = iota
+	File
 	Scroll
 	Quit
 )
@@ -40,6 +48,7 @@ const (
 type Message struct {
 	Kind    Kind
 	Text    []byte // Content: the Markdown
+	Path    string // File
 	Line    int    // Scroll
 	Percent int    // Scroll, 0-100
 }
@@ -68,7 +77,14 @@ func Read(r *bufio.Reader) (Message, error) {
 	cmd, args, _ := strings.Cut(header, " ")
 	switch cmd {
 	case "CONTENT":
-		return readContent(r, args)
+		text, err := readPayload(r, "CONTENT", args, MaxContent)
+		return Message{Kind: Content, Text: text}, err
+	case "FILE":
+		path, err := readPayload(r, "FILE", args, maxPath)
+		if err == nil && (len(path) == 0 || bytes.IndexByte(path, 0) >= 0) {
+			err = protocolErr("bad FILE path")
+		}
+		return Message{Kind: File, Path: string(path)}, err
 	case "SCROLL":
 		return parseScroll(args)
 	case "QUIT":
@@ -101,19 +117,20 @@ func readHeader(r *bufio.Reader) (string, error) {
 	}
 }
 
-func readContent(r *bufio.Reader, args string) (Message, error) {
-	n, err := parseUint(args, MaxContent)
+// readPayload reads the bytes following a "<cmd> <nbytes>" header.
+func readPayload(r *bufio.Reader, cmd, args string, max uint64) ([]byte, error) {
+	n, err := parseUint(args, max)
 	if err != nil {
-		return Message{}, protocolErr("bad CONTENT size")
+		return nil, protocolErr("bad %s size", cmd)
 	}
-	text := make([]byte, n)
-	if _, err := io.ReadFull(r, text); err != nil {
+	payload := make([]byte, n)
+	if _, err := io.ReadFull(r, payload); err != nil {
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-			return Message{}, protocolErr("CONTENT truncated")
+			return nil, protocolErr("%s truncated", cmd)
 		}
-		return Message{}, err
+		return nil, err
 	}
-	return Message{Kind: Content, Text: text}, nil
+	return payload, nil
 }
 
 func parseScroll(args string) (Message, error) {

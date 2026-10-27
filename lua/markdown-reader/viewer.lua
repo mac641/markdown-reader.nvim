@@ -72,6 +72,12 @@ function Viewer:content(text)
   self:send(("CONTENT %d\n"):format(#text) .. text)
 end
 
+--- Tells the viewer the document is now the file at path.
+---@param path string
+function Viewer:file(path)
+  self:send(("FILE %d\n%s\n"):format(#path, path))
+end
+
 ---@param line integer 1-based source line
 ---@param percent integer 0-100, height in the window to show it at
 function Viewer:scroll(line, percent)

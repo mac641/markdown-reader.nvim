@@ -33,6 +33,11 @@
       invalidate();
     },
 
+    // Makes relative URLs in later updates resolve against baseURI.
+    setBase(baseURI) {
+      document.querySelector('base').href = baseURI;
+    },
+
     // Scrolls so that source line `line` appears `percent`% of the window
     // height from the top, interpolating between the surrounding blocks.
     scrollTo(line, percent) {
