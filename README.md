@@ -19,6 +19,7 @@ Linux, WKWebView on macOS). The Lua plugin starts and stops it and talks to it o
 - Neovim 0.12 or newer
 - To build the viewer: Go 1.25 or newer, a C++ compiler, `make`, and on Linux `pkg-config` with the GTK 4 and WebKitGTK
   6.0 development files
+- On Linux, a Wayland session; X11 isn't supported
 
 ## Getting started
 
@@ -126,6 +127,31 @@ require("markdown-reader").setup({
   debug = false,
 })
 ```
+
+## Window placement
+
+The preview is a normal window, and your desktop decides where it goes: Wayland doesn't let programs place windows. On
+Linux its app ID is `mdreader`, so window manager rules can match it.
+
+**sway** opens it next to the focused window, i.e. beside Neovim. To keep the focus in Neovim:
+
+```
+no_focus [app_id="mdreader"]
+```
+
+**niri** opens it as a new column next to Neovim. To keep the focus in Neovim and give it half the screen:
+
+```kdl
+window-rule {
+    match app-id="^mdreader$"
+    open-focused false
+    default-column-width { proportion 0.5; }
+}
+```
+
+**COSMIC** tiles it next to Neovim when tiling is on for the workspace (Super+Y).
+
+**GNOME** and **macOS** open it as a floating window. On GNOME, Super+→ tiles it to the right half of the screen.
 
 ## Development
 
