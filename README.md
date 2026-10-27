@@ -286,7 +286,9 @@ main thread. All viewer state is therefore only accessed from one thread and nee
 
 **Rendering.** Markdown is rendered on the stdin goroutine, so a large document doesn't block the window.
 `internal/render` uses goldmark v2 with its GFM, footnote and alert extensions. An AST transformer adds `data-line="N"`
-to each block, computed from the byte offset goldmark records for it, and the HTML renderer writes these out.
+to each block, computed from the byte offset goldmark records for it, and the HTML renderer writes these out. The same
+transformer gives headings the anchor IDs GitHub gives them (the text in lower case, punctuation dropped, spaces as `-`,
+numbered when repeated), so `#heading` links work as they do on GitHub.
 
 **The page** is loaded once, with a `<base href>` pointing at the Markdown file's directory, so relative images and
 links resolve as on disk. Later updates replace only the body through `mdr.update(html)` in `page.js`, keeping scroll
