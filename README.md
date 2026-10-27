@@ -4,6 +4,7 @@ A Markdown preview for Neovim that renders in a native window instead of a brows
 type and scrolls along with your cursor.
 
 - GitHub-flavoured Markdown: tables, task lists, strikethrough, autolinks, footnotes and alerts (`> [!NOTE]`)
+- Syntax highlighting of fenced code blocks, in GitHub's colors
 - Live updates while typing (debounced), or on `:write` only
 - Cursor following: the line under the cursor sits at the same height in the preview as in the Neovim window
 - Relative images and links resolve against the file's directory; clicked links to Markdown files open in Neovim, all
@@ -253,7 +254,7 @@ lua/markdown-reader/
   config.lua                 defaults
 cmd/mdreader/main.go         the viewer: flags, window, goroutines
 internal/ipc/                parses the stdin protocol
-internal/render/             Markdown → HTML with goldmark, plus data-line attributes
+internal/render/             Markdown → HTML with goldmark: data-line attributes, heading IDs, highlighting
 internal/page/               the HTML page around it; assets/ holds style.css and page.js
 internal/webview/            cgo binding of webview; per-OS page loaders
 third_party/webview/         vendored webview (C++)
@@ -288,7 +289,10 @@ main thread. All viewer state is therefore only accessed from one thread and nee
 `internal/render` uses goldmark v2 with its GFM, footnote and alert extensions. An AST transformer adds `data-line="N"`
 to each block, computed from the byte offset goldmark records for it, and the HTML renderer writes these out. The same
 transformer gives headings the anchor IDs GitHub gives them (the text in lower case, punctuation dropped, spaces as `-`,
-numbered when repeated), so `#heading` links work as they do on GitHub.
+numbered when repeated), so `#heading` links work as they do on GitHub. Fenced code in a language
+[chroma](https://github.com/alecthomas/chroma) knows is highlighted with chroma's CSS classes; `internal/page` adds the
+colors of chroma's `github` and `github-dark` styles to the page, without their backgrounds, so code blocks keep the
+page's look.
 
 **The page** is loaded once, with a `<base href>` pointing at the Markdown file's directory, so relative images and
 links resolve as on disk. Later updates replace only the body through `mdr.update(html)` in `page.js`, keeping scroll

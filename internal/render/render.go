@@ -3,7 +3,9 @@
 // It speaks GitHub's dialect (tables, task lists, strikethrough, autolinks,
 // footnotes, alerts) and tags block elements with data-line, their 1-based
 // source line, which the page uses to scroll to the editor's cursor.
-// Headings get GitHub's anchor IDs.
+// Headings get GitHub's anchor IDs, and fenced code with a known language
+// is highlighted with chroma's CSS classes (see the page package for the
+// colors).
 package render
 
 import (
@@ -14,6 +16,10 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/alecthomas/chroma/v2"
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/alecthomas/chroma/v2/styles"
 	alert "github.com/yuin/goldmark-alert"
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/extension"
@@ -37,6 +43,9 @@ var (
 			// Last, so that its renderers win.
 			overrides{}),
 	)
+	// With classes, the style only matters for which tokens get one.
+	codeFormatter = chromahtml.New(chromahtml.WithClasses(true), chromahtml.PreventSurroundingPre(true))
+	codeStyle     = styles.Get("github")
 )
 
 // HTML renders a Markdown document.
@@ -188,7 +197,8 @@ func (overrides) RendererOptions(*html.Config) []html.Option {
 	}
 }
 
-// renderCodeBlock is goldmark's, plus attributes (i.e. data-line) on <pre>.
+// renderCodeBlock is goldmark's, plus attributes (i.e. data-line) on <pre>
+// and highlighting.
 func renderCodeBlock(writer io.Writer, src []byte, node ast.Node, entering bool, rc renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if !entering {
@@ -200,12 +210,35 @@ func renderCodeBlock(writer io.Writer, src []byte, node ast.Node, entering bool,
 	_, _ = w.WriteString("<pre")
 	html.RenderAttributes(w, src, n, nil, rc)
 	_, _ = w.WriteString("><code")
-	if lang, ok := n.Language(src); ok {
+	lang, ok := n.Language(src)
+	if ok {
 		_, _ = w.WriteString(` class="language-`)
 		_, _ = tw.WriteString(lang)
 		_ = w.WriteByte('"')
 	}
 	_ = w.WriteByte('>')
+	if ok && highlight(w, lang, n.Value.Str(src)) {
+		return ast.WalkContinue, nil
+	}
 	_, _ = n.Value.WriteTo(tw, src)
 	return ast.WalkContinue, nil
+}
+
+// highlight writes code as HTML with chroma's classes, if chroma knows
+// lang.
+func highlight(w io.Writer, lang, code string) bool {
+	lexer := lexers.Get(lang)
+	if lexer == nil {
+		return false
+	}
+	tokens, err := chroma.Coalesce(lexer).Tokenise(nil, code)
+	if err != nil {
+		return false
+	}
+	var out bytes.Buffer
+	if codeFormatter.Format(&out, codeStyle, tokens) != nil {
+		return false
+	}
+	_, _ = out.WriteTo(w)
+	return true
 }

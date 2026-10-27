@@ -60,7 +60,8 @@ func TestEscaping(t *testing.T) {
 	expect(t, "[l](<a b>)\n", `<a href="a%20b">`)
 	expect(t, "[l](/x?a=1&b=2 \"t\\\"\")\n", `href="/x?a=1&amp;b=2" title="t&quot;"`)
 	expect(t, "![alt *em*](o.png \"t\")\n", `<img src="o.png" alt="alt em" title="t">`)
-	expect(t, "```js\n<x>\n```\n", `<code class="language-js">&lt;x&gt;`)
+	expect(t, "```nolang\n<x>\n```\n", `<code class="language-nolang">&lt;x&gt;`)
+	expect(t, "```js\n\"<x>\"\n```\n", `<span class="s2">&#34;&lt;x&gt;&#34;</span>`)
 }
 
 func TestHeadingIDs(t *testing.T) {
@@ -88,6 +89,16 @@ func TestHeadings(t *testing.T) {
 			t.Errorf("Headings[%d] = %v, want %v", i, got[i], want[i])
 		}
 	}
+}
+
+func TestHighlighting(t *testing.T) {
+	expect(t, "```go\nfunc f() {}\n```\n", `<code class="language-go"><span class="kd">func</span>`)
+	// Data lines stay on <pre>, and nothing but spans is added.
+	html, _ := HTML([]byte("x\n\n```go\nx := 1\n```\n"))
+	if !strings.Contains(html, `<pre data-line="3"><code class="language-go"><span`) || strings.Contains(html, "chroma") {
+		t.Errorf("highlighted block: %s", html)
+	}
+	expect(t, "    indented\n", "<code>indented")
 }
 
 func TestEdgeCases(t *testing.T) {
