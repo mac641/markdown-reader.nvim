@@ -114,6 +114,8 @@ run `:MarkdownReader`.
 From Lua: `require("markdown-reader").open()`, `.close()`, `.toggle()` and `.is_open()`, each taking an optional buffer
 number.
 
+`:help markdown-reader` has all of this README's user documentation inside Neovim.
+
 ## Configuration
 
 `setup()` defines the command and takes these options (the defaults):
@@ -267,6 +269,7 @@ internal/page/               the HTML page around it; assets/ holds style.css an
 internal/webview/            cgo binding of webview; per-OS page loaders
 third_party/webview/         vendored webview (C++)
 tests/                       fixtures, plugin tests and the fake viewer
+doc/markdown-reader.txt      :help markdown-reader
 ```
 
 ### Protocol

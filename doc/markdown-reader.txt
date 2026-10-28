@@ -1,0 +1,208 @@
+*markdown-reader.txt*  Markdown preview in a native window
+
+==============================================================================
+CONTENTS                                            *markdown-reader-contents*
+
+  1. Introduction .................................... |markdown-reader-intro|
+  2. Requirements ............................. |markdown-reader-requirements|
+  3. Installation .................................. |markdown-reader-install|
+  4. Usage ........................................... |markdown-reader-usage|
+  5. Lua API ........................................... |markdown-reader-api|
+  6. Configuration .................................. |markdown-reader-config|
+  7. Links ........................................... |markdown-reader-links|
+  8. Window placement ............................ |markdown-reader-placement|
+  9. Troubleshooting ....................... |markdown-reader-troubleshooting|
+
+==============================================================================
+1. Introduction                                        *markdown-reader-intro*
+
+markdown-reader.nvim previews Markdown buffers in a native window instead of a
+browser tab. The preview updates while you type and scrolls along with your
+cursor.
+
+It renders GitHub-flavoured Markdown: tables, task lists, strikethrough,
+autolinks, footnotes, alerts (`> [!NOTE]`) and syntax highlighting of fenced
+code blocks, in GitHub's light or dark colors following the system setting.
+
+The preview is a separate program, `mdreader`, that shows the page in the
+system's web engine (WebKitGTK on Linux, WKWebView on macOS). Each previewed
+buffer gets its own window, which closes with the buffer or with Neovim.
+
+==============================================================================
+2. Requirements                                 *markdown-reader-requirements*
+
+- Neovim 0.12 or newer
+- To build the viewer: Go 1.25 or newer, a C++ compiler, `make`, and on Linux
+  `pkg-config` with the GTK 4 and WebKitGTK 6.0 development files. Running
+  `make` without them lists the packages to install for Ubuntu, Fedora,
+  openSUSE and NixOS.
+- On Linux, a Wayland session; X11 isn't supported
+
+==============================================================================
+3. Installation                                      *markdown-reader-install*
+
+With lazy.nvim: >lua
+    {
+      "mac641/markdown-reader.nvim",
+      build = "make",
+      cmd = "MarkdownReader",
+      keys = {
+        { "<leader>mp", "<cmd>MarkdownReader<cr>", ft = "markdown",
+          desc = "Toggle Markdown preview" },
+      },
+      opts = {},
+    }
+<
+`build = "make"` compiles the viewer into the plugin's `bin/mdreader`. On
+NixOS, use `build = "nix-shell --run make"`, which takes the dependencies from
+the repository's `shell.nix`. `opts` (even empty) makes lazy.nvim call
+|markdown-reader.setup()|. The plugin sets no mappings of its own.
+
+With any other plugin manager, run `make` in the plugin's directory after
+installing or updating it, and call |markdown-reader.setup()| from your
+config.
+
+Afterwards, run `:checkhealth markdown-reader`; see
+|markdown-reader-troubleshooting|.
+
+==============================================================================
+4. Usage                                               *markdown-reader-usage*
+
+                                                             *:MarkdownReader*
+:MarkdownReader [action]
+    Without an argument or with `toggle`, opens the preview of the current
+    buffer, or closes it if it is open.
+
+    `open`   opens the preview; does nothing if it is already open
+    `close`  closes the preview
+
+The command exists once |markdown-reader.setup()| has been called.
+
+==============================================================================
+5. Lua API                                               *markdown-reader-api*
+
+All functions take an optional buffer number; 0 or nil means the current
+buffer.
+
+                                                     *markdown-reader.setup()*
+require("markdown-reader").setup({opts})
+    Applies {opts} (see |markdown-reader-config|) and defines
+    |:MarkdownReader|. Calling it again replaces the options.
+
+                                                      *markdown-reader.open()*
+require("markdown-reader").open({buf})
+    Opens the preview of {buf}.
+
+                                                     *markdown-reader.close()*
+require("markdown-reader").close({buf})
+    Closes the preview of {buf}.
+
+                                                    *markdown-reader.toggle()*
+require("markdown-reader").toggle({buf})
+    Opens or closes the preview of {buf}.
+
+                                                   *markdown-reader.is_open()*
+require("markdown-reader").is_open({buf})
+    Returns true if {buf} has a preview.
+
+                                                 *markdown-reader.close_all()*
+require("markdown-reader").close_all()
+    Closes all previews.
+
+==============================================================================
+6. Configuration                                      *markdown-reader-config*
+
+The options of |markdown-reader.setup()|, with their defaults: >lua
+    require("markdown-reader").setup({
+      binary = nil,
+      live = true,
+      debounce_ms = 150,
+      follow_cursor = true,
+      debug = false,
+    })
+<
+                                               *markdown-reader-config-binary*
+binary ~
+    Path to the viewer. nil uses `bin/mdreader` in the plugin's directory,
+    which `make` builds.
+
+                                                 *markdown-reader-config-live*
+live ~
+    Update the preview while typing. false updates it on |:write| only.
+
+                                          *markdown-reader-config-debounce_ms*
+debounce_ms ~
+    Delay in milliseconds after the last edit before the preview re-renders.
+
+                                        *markdown-reader-config-follow_cursor*
+follow_cursor ~
+    Scroll the preview so that the cursor line sits at the same height as in
+    the Neovim window.
+
+                                                *markdown-reader-config-debug*
+debug ~
+    Start the viewer with the web inspector enabled: right-click the page and
+    choose "Inspect Element".
+
+==============================================================================
+7. Links                                               *markdown-reader-links*
+
+Relative images and links resolve against the directory of the buffer's file.
+Clicking a link in the preview:
+
+- `#heading` scrolls the preview to that heading. Headings have the anchor IDs
+  GitHub gives them: the text in lower case, punctuation dropped, spaces
+  turned into `-`, numbered when repeated (`a`, `a-1`, ...).
+- A link to another Markdown file (`.md` or `.markdown`) opens it with |:edit|
+  in the window that shows the previewed buffer, with the cursor on the linked
+  heading if there is one. The preview then follows the new buffer. If that
+  buffer already has a preview of its own, the clicked one closes instead.
+- A link to a heading of the same file only moves the cursor.
+- Everything else opens with |vim.ui.open()|, i.e. in your default
+  application.
+
+==============================================================================
+8. Window placement                                *markdown-reader-placement*
+
+The preview is a normal window, and your desktop decides where it goes:
+Wayland doesn't let programs place windows. On Linux its app ID is `mdreader`,
+so window manager rules can match it.
+
+sway opens it next to the focused window. To keep the focus in Neovim: >
+    no_focus [app_id="mdreader"]
+<
+niri opens it as a new column. To keep the focus in Neovim and give it half
+the screen: >
+    window-rule {
+        match app-id="^mdreader$"
+        open-focused false
+        default-column-width { proportion 0.5; }
+    }
+<
+COSMIC tiles it next to Neovim when tiling is on for the workspace (Super+Y).
+GNOME and macOS open it as a floating window; on GNOME, Super+Right tiles it
+to the right half of the screen.
+
+==============================================================================
+9. Troubleshooting                           *markdown-reader-troubleshooting*
+
+Run: >vim
+    :checkhealth markdown-reader
+<
+It checks that |markdown-reader.setup()| was called, that Neovim runs in a
+Wayland session on Linux, and that the viewer is built and starts, which
+catches missing GTK or WebKit libraries.
+
+"viewer not built"
+    Run `make` in the plugin's directory (with lazy.nvim: `:Lazy build
+    markdown-reader.nvim`). If it fails, it lists the packages to install.
+
+"no Wayland session"
+    Neovim must run inside a Wayland desktop session. Under tmux or ssh, make
+    sure `WAYLAND_DISPLAY` reaches Neovim's environment.
+
+"viewer exited with code ..."
+    The viewer's error output follows the message. Set `debug = true` (see
+    |markdown-reader-config-debug|) to inspect the page.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
