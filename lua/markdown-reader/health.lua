@@ -34,7 +34,8 @@ function M.check()
 
   local bin, err = require("markdown-reader")._find_binary()
   if not bin then
-    health.error(err)
+    -- Without a path, there's always an error.
+    health.error(err --[[@as string]])
     return
   end
   -- --headings opens no window but loads the viewer with all its libraries,

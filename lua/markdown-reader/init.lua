@@ -38,7 +38,10 @@ end
 ---@param buf? integer
 ---@return integer
 local function resolve(buf)
-  return (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
+  if buf == nil or buf == 0 then
+    return vim.api.nvim_get_current_buf()
+  end
+  return buf
 end
 
 local function push_content(buf)
