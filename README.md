@@ -215,8 +215,10 @@ To speak the protocol yourself, as the plugin does:
 | `make test-go`  | unit tests of the protocol parser, page builder and renderer (`internal/*/..._test.go`); no WebKit or display needed  |
 | `make test-lua` | the plugin, against `tests/lua/fake-viewer.sh`, a shell script that logs what it receives instead of opening a window |
 
-Neither needs a display, so both run in CI. The window itself is checked by hand, e.g. with `tests/fixtures/sample.md`,
-which uses every supported feature.
+Neither needs a display. CI (`.github/workflows/ci.yml`) runs both on Linux and macOS, plus golangci-lint, gofmt,
+shellcheck and `deno fmt --check`. It also builds the viewer with each install command above (Ubuntu, Fedora and
+openSUSE containers, and `shell.nix`). The window itself is checked by hand, e.g. with `tests/fixtures/sample.md`, which
+uses every supported feature.
 
 ### External Dependencies
 

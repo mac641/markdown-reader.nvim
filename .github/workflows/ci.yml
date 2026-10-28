@@ -1,0 +1,88 @@
+# Tests on Linux and macOS, lints, and checks that the README's install
+# instructions build the viewer on each distribution they name.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install GTK 4 and WebKitGTK
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+      - run: make
+      - run: make test
+      # Per OS, since each has Go files only it compiles.
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15
+
+  format:
+    name: Format and shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          [ -z "$unformatted" ] || { echo "not gofmt'ed: $unformatted"; exit 1; }
+      - run: shellcheck tests/lua/fake-viewer.sh scripts/*.sh
+      - uses: denoland/setup-deno@v2
+      - run: deno fmt --check README.md
+
+  distro:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The README's install commands, without sudo.
+          - name: Ubuntu
+            image: ubuntu:24.04
+            install: >-
+              apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y
+              golang-go build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+          - name: Fedora
+            image: fedora:latest
+            install: dnf install -y golang gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'
+          - name: openSUSE Tumbleweed
+            image: opensuse/tumbleweed:latest
+            install: zypper install -y go gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - run: ${{ matrix.install }}
+      - uses: actions/checkout@v7
+      - run: make
+      - run: make test-go
+
+  nix:
+    name: Build (Nix)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: nix-shell --run 'make && make test'
