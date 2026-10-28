@@ -31,13 +31,15 @@ import (
 )
 
 // LoadHTML loads a complete page such that relative URLs resolve against
-// baseURI, the file:// URI of a directory, and local files may be read.
+// the base URI, the second argument (the file:// URI of a directory), and
+// local files may be read.
 //
 // WKWebView's loadHTMLString:baseURL: doesn't reliably let the sandboxed
 // web content process read local files, so the page is written to a
 // temporary file and loaded with loadFileURL:allowingReadAccessToURL:,
-// which does. baseURI is already in the page's <base>.
-func (v *WebView) LoadHTML(html, baseURI string) error {
+// which does. The base URI itself isn't needed: it is already in the
+// page's <base>.
+func (v *WebView) LoadHTML(html, _ string) error {
 	view := v.nativeView()
 	if view == nil {
 		return errors.New("no web view")
