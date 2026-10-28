@@ -308,6 +308,9 @@ function M.is_open(buf)
   return states[resolve(buf)] ~= nil
 end
 
+--- For :checkhealth.
+M._find_binary = find_binary
+
 --- For tests.
 ---@param buf? integer
 ---@return markdown-reader.State?

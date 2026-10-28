@@ -288,6 +288,21 @@ test(":MarkdownReader command", function()
   check(vim.deep_equal(vim.fn.getcompletion("MarkdownReader o", "cmdline"), { "open" }), "completion")
 end)
 
+test(":checkhealth runs the viewer", function()
+  local function health()
+    vim.cmd("silent checkhealth markdown-reader")
+    local out = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+    vim.cmd("bwipeout!")
+    return out
+  end
+  local out = health()
+  check(out:find("viewer works", 1, true) and out:find("setup() was called", 1, true), out)
+  mr.setup({ binary = "/nonexistent/mdreader" })
+  out = health()
+  check(out:find("viewer not executable", 1, true), out)
+  mr.setup({ binary = root .. "/tests/lua/fake-viewer.sh", debounce_ms = 20 })
+end)
+
 test("VimLeavePre closes all viewers", function()
   local a, b = scratch({ "a" }), scratch({ "b" })
   mr.open(a)

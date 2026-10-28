@@ -98,7 +98,9 @@ vim.api.nvim_create_autocmd("FileType", {
 
 ### 3. Check it
 
-Open a Markdown file and run `:MarkdownReader`. If the viewer is missing, the plugin tells you where to run `make`.
+Run `:checkhealth markdown-reader`. It checks that `setup()` was called, that Neovim runs in a Wayland session on Linux,
+and that the viewer is built and starts, which catches missing GTK or WebKit libraries. Then open a Markdown file and
+run `:MarkdownReader`.
 
 ## Usage
 
@@ -254,6 +256,7 @@ lua/markdown-reader/
                              edits, cursor, buffer unload and VimLeavePre
   viewer.lua                 starts the process, speaks the protocol, closes it
   config.lua                 defaults
+  health.lua                 :checkhealth markdown-reader
 cmd/mdreader/main.go         the viewer: flags, window, goroutines
 internal/ipc/                parses the stdin protocol
 internal/render/             Markdown → HTML with goldmark: data-line attributes, heading IDs, highlighting
