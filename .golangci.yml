@@ -1,0 +1,10 @@
+# golangci-lint's standard linters, plus a few that catch real mistakes
+# without imposing a style.
+version: "2"
+
+linters:
+  enable:
+    - errorlint # error comparisons that miss wrapped errors
+    - modernize # code that newer Go has simpler APIs for
+    - revive # shadowed builtins, undocumented exported identifiers, ...
+    - unparam # parameters and results that are never used
