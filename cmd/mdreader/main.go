@@ -58,7 +58,8 @@ func main() {
 	renderOnly := flag.Bool("render-only", false, "print the rendered HTML and exit")
 	headings := flag.Bool("headings", false, "print the line and anchor ID of each heading of the Markdown on stdin")
 	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(),
+		// Nothing to do if even the usage can't be written.
+		_, _ = fmt.Fprintln(flag.CommandLine.Output(),
 			"usage: mdreader [--debug] [--stdin] FILE\n       mdreader --render-only FILE\n       mdreader --headings")
 		flag.PrintDefaults()
 	}
@@ -84,7 +85,9 @@ func printHeadings() int {
 	}
 	out := bufio.NewWriter(os.Stdout)
 	for _, h := range render.Headings(md) {
-		fmt.Fprintf(out, "%d %s\n", h.Line, h.ID)
+		if _, err := fmt.Fprintf(out, "%d %s\n", h.Line, h.ID); err != nil {
+			return fail(err)
+		}
 	}
 	if err := out.Flush(); err != nil {
 		return fail(err)
