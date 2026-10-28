@@ -85,4 +85,7 @@ jobs:
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
-      - run: nix-shell --run 'make && make test'
+      # Plain make, as lazy.nvim runs it; /etc/NIXOS makes it take the
+      # NixOS path and build inside shell.nix.
+      - run: sudo touch /etc/NIXOS && make
+      - run: nix-shell --run 'make test'

@@ -11,14 +11,28 @@ BIN := bin/mdreader
 UNAME_S := $(shell uname -s)
 
 ifneq ($(UNAME_S),Darwin)
-  MISSING_DEPS := $(shell $(PKG_CONFIG) --exists gtk4 webkitgtk-6.0 || echo 1)
+  MISSING_DEPS := $(shell $(PKG_CONFIG) --exists gtk4 webkitgtk-6.0 2>/dev/null || echo 1)
+endif
+
+# NixOS links no headers or pkg-config files into the system, even for
+# libraries in environment.systemPackages, so there the build runs inside
+# shell.nix, which provides them and Go.
+ifneq ($(and $(MISSING_DEPS),$(wildcard /etc/NIXOS)),)
+  ifndef IN_NIX_SHELL
+    VIA_NIX_SHELL := 1
+  endif
 endif
 
 all: $(BIN)
 
 # go build tracks its own dependencies and caches, so always ask it.
+ifdef VIA_NIX_SHELL
+$(BIN):
+	nix-shell --run '$(MAKE) $(BIN)'
+else
 $(BIN): check-deps
 	$(GO) build -trimpath -ldflags '-s -w' -o $@ ./cmd/mdreader
+endif
 
 check-deps:
 	@command -v $(GO) >/dev/null || { \
@@ -28,7 +42,7 @@ ifdef MISSING_DEPS
 	@echo "  Ubuntu:   sudo apt install golang-go build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev" >&2
 	@echo "  Fedora:   sudo dnf install golang gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'" >&2
 	@echo "  openSUSE: sudo zypper install go gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'" >&2
-	@echo "  NixOS:    nix-shell --run make   (with the repository's shell.nix)" >&2
+	@echo "  NixOS:    nix-shell --run make   (make does this itself outside of a nix-shell)" >&2
 	@exit 1
 endif
 

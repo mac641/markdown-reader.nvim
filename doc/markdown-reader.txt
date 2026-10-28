@@ -54,8 +54,8 @@ With lazy.nvim: >lua
     }
 <
 `build = "make"` compiles the viewer into the plugin's `bin/mdreader`. On
-NixOS, use `build = "nix-shell --run make"`, which takes the dependencies from
-the repository's `shell.nix`. `opts` (even empty) makes lazy.nvim call
+NixOS, `make` builds inside the repository's `shell.nix`, which provides the
+dependencies. `opts` (even empty) makes lazy.nvim call
 |markdown-reader.setup()|. The plugin sets no mappings of its own.
 
 With any other plugin manager, run `make` in the plugin's directory after

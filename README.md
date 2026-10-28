@@ -47,13 +47,8 @@ sudo zypper install go gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'
 
 **NixOS**
 
-The repository's `shell.nix` provides the dependencies; build inside it:
-
-```sh
-nix-shell --run make
-```
-
-With lazy.nvim, use `build = "nix-shell --run make"` instead of `build = "make"` below.
+Nothing to install besides `make`: NixOS doesn't expose libraries' headers to builds, so on NixOS `make` runs itself
+inside the repository's `shell.nix`, which provides Go, GTK 4 and WebKitGTK.
 
 **macOS**
 
