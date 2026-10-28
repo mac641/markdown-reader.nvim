@@ -47,8 +47,12 @@ With lazy.nvim: >lua
       build = "make",
       cmd = "MarkdownReader",
       keys = {
-        { "<leader>mp", "<cmd>MarkdownReader<cr>", ft = "markdown",
-          desc = "Toggle Markdown preview" },
+        {
+          "<leader>mp",
+          function() require("markdown-reader").toggle() end,
+          ft = "markdown",
+          desc = "Toggle Markdown preview",
+        },
       },
       opts = {},
     }

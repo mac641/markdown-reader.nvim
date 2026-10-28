@@ -69,8 +69,18 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
   build = "make",
   cmd = "MarkdownReader",
   keys = {
-    { "<leader>mp", "<cmd>MarkdownReader<cr>", ft = "markdown", desc = "Toggle Markdown preview" },
-    { "<leader>ms", "<cmd>MarkdownReader close<cr>", ft = "markdown", desc = "Close Markdown preview" },
+    {
+      "<leader>mp",
+      function() require("markdown-reader").toggle() end,
+      ft = "markdown",
+      desc = "Toggle Markdown preview",
+    },
+    {
+      "<leader>ms",
+      function() require("markdown-reader").close() end,
+      ft = "markdown",
+      desc = "Close Markdown preview",
+    },
   },
   opts = {},
 }
