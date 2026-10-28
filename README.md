@@ -47,11 +47,13 @@ sudo zypper install go gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'
 
 **NixOS**
 
-Build inside a shell that provides the dependencies:
+The repository's `shell.nix` provides the dependencies; build inside it:
 
 ```sh
-nix-shell -p go gnumake pkg-config gtk4 webkitgtk_6_0 --run make
+nix-shell --run make
 ```
+
+With lazy.nvim, use `build = "nix-shell --run make"` instead of `build = "make"` below.
 
 **macOS**
 
@@ -161,7 +163,8 @@ window-rule {
 
 ### Setup
 
-Install the build dependencies above, plus Neovim for the plugin tests.
+Install the build dependencies above, plus Neovim for the plugin tests. With Nix, `nix-shell` gives you all of them and
+the linters (golangci-lint, shellcheck, deno).
 
 ```sh
 git clone https://github.com/mac641/markdown-reader.nvim

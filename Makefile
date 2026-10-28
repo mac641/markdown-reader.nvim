@@ -28,7 +28,7 @@ ifdef MISSING_DEPS
 	@echo "  Ubuntu:   sudo apt install golang-go build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev" >&2
 	@echo "  Fedora:   sudo dnf install golang gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'" >&2
 	@echo "  openSUSE: sudo zypper install go gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'" >&2
-	@echo "  NixOS:    nix-shell -p go gnumake pkg-config gtk4 webkitgtk_6_0 --run make" >&2
+	@echo "  NixOS:    nix-shell --run make   (with the repository's shell.nix)" >&2
 	@exit 1
 endif
 
