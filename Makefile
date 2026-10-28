@@ -25,13 +25,15 @@ endif
 
 all: $(BIN)
 
-# go build tracks its own dependencies and caches, so always ask it.
+# go build tracks its own dependencies and caches, so always ask it. The
+# viewer doesn't use git metadata, so it isn't stamped in: git refuses to
+# read a checkout owned by another user, which would fail the build.
 ifdef VIA_NIX_SHELL
 $(BIN):
 	nix-shell --run '$(MAKE) $(BIN)'
 else
 $(BIN): check-deps
-	$(GO) build -trimpath -ldflags '-s -w' -o $@ ./cmd/mdreader
+	$(GO) build -trimpath -buildvcs=false -ldflags '-s -w' -o $@ ./cmd/mdreader
 endif
 
 check-deps:
