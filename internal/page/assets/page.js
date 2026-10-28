@@ -87,29 +87,43 @@
     return row ? { top: row[0], bottom: row[1] } : { top: y, bottom: y + lineHeight() };
   }
 
-  // Glides the page to position y: each frame covers part of the way that's
-  // left, so a new target simply takes over from wherever the page is.
-  const GLIDE_MS = 50; // time constant: 95% of the way after 150 ms
-  let glide = null; // { pos, target, time } while gliding
+  // Glides the page to position y like a critically damped spring: it
+  // speeds up from rest, slows down into place without overshooting, and a
+  // new target takes over at the current speed, so the motion never jerks.
+  const SPRING_MS = 35; // 1/ω: within a pixel of a short target after ~200 ms
+  let glide = null; // { pos, v (px/ms), target, time } while gliding
 
   function glideTo(y, instant) {
     if (instant) {
       glide = null;
       window.scrollTo(0, y);
-    } else if (glide) {
-      glide.target = y;
-    } else {
-      glide = { pos: window.scrollY, target: y, time: null };
+      return;
+    }
+    if (!glide) {
+      glide = { pos: window.scrollY, v: 0, target: y, time: null };
       requestAnimationFrame(step);
     }
+    glide.target = y;
+    // Sliding across more than half a window can't look smooth in the time
+    // a glide takes (think gg or G): jump to half a window away from the
+    // target, keeping the speed, and glide the rest.
+    const far = window.innerHeight / 2;
+    if (Math.abs(y - glide.pos) > far) glide.pos = y - Math.sign(y - glide.pos) * far;
   }
 
   function step(now) {
     if (!glide) return;
-    const dt = glide.time === null ? 16 : now - glide.time;
+    // A stalled frame shouldn't turn into a leap.
+    const dt = glide.time === null ? 16 : Math.min(now - glide.time, 50);
     glide.time = now;
-    glide.pos += (glide.target - glide.pos) * (1 - Math.exp(-dt / GLIDE_MS));
-    if (Math.abs(glide.target - glide.pos) < 0.5) glide.pos = glide.target;
+    // The spring's exact motion over dt.
+    const w = 1 / SPRING_MS;
+    const off = glide.pos - glide.target;
+    const a = glide.v + w * off;
+    const decay = Math.exp(-w * dt);
+    glide.pos = glide.target + (off + a * dt) * decay;
+    glide.v = (glide.v - w * a * dt) * decay;
+    if (Math.abs(glide.target - glide.pos) < 0.5 && Math.abs(glide.v) < 0.05) glide.pos = glide.target;
     window.scrollTo(0, glide.pos);
     if (glide.pos === glide.target) glide = null;
     else requestAnimationFrame(step);

@@ -340,9 +340,11 @@ Neovim's text does, and always in the same direction.
 `page.js` collects the page positions of all elements with `data-line` and finds where a source line is rendered by
 binary search between the two blocks around it, interpolating in between. It then widens that position to the row of
 text there, so `<top>` lands at the top edge without a row of text being cut in half. The cursor's row is kept at least
-two rows away from the window's edges. The page glides to its new position: each frame covers part of the remaining way,
-so a new position takes over smoothly from wherever the last one got to. Scrolling the preview by hand stops the glide
-and leaves the page there until Neovim's view changes again; the preview never moves Neovim's cursor.
+two rows away from the window's edges. The page glides to its new position like a critically damped spring: it speeds up
+from rest and slows down into place, and a new position takes over at the current speed, so holding a key gives one even
+motion. Jumps longer than half the window, like `gg` or `G`, skip to half a window before the target and glide the rest.
+Scrolling the preview by hand stops the glide and leaves the page there until Neovim's view changes again; the preview
+never moves Neovim's cursor.
 
 Positions are cached until the content, window size or a loaded image changes the layout, which also re-applies the last
 position.
