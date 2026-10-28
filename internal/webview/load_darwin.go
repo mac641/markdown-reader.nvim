@@ -68,7 +68,8 @@ func (v *WebView) LoadHTML(html, baseURI string) error {
 // needed. Safe to call more than once.
 func (v *WebView) Cleanup() {
 	if v.tmpFile != "" {
-		os.Remove(v.tmpFile)
+		// A leftover file in the temp directory is harmless; nothing to do.
+		_ = os.Remove(v.tmpFile)
 		v.tmpFile = ""
 	}
 }
