@@ -33,7 +33,7 @@ func tokenCSS(style string) string {
 	var all strings.Builder
 	_ = chromahtml.New(chromahtml.WithClasses(true)).WriteCSS(&all, styles.Get(style))
 	var b strings.Builder
-	for _, rule := range strings.Split(all.String(), "\n") {
+	for rule := range strings.SplitSeq(all.String(), "\n") {
 		// Rules look like "/* Keyword */ .chroma .k { color: #cf222e }".
 		_, sel, ok := strings.Cut(rule, "*/ .chroma .")
 		if ok && !strings.HasPrefix(rule, "/* Line") && !strings.HasPrefix(rule, "/* Error") {

@@ -69,22 +69,21 @@ func Headings(src []byte) []Heading {
 	var hs []Heading
 	_ = ast.Walk(mdParser.Parse(src), func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if h, ok := n.(*ast.Heading); ok && entering {
-			line, _ := attr(h, "data-line", src)
-			id, _ := attr(h, "id", src)
-			l, _ := strconv.Atoi(line)
-			hs = append(hs, Heading{l, id})
+			l, _ := strconv.Atoi(attr(h, "data-line", src))
+			hs = append(hs, Heading{l, attr(h, "id", src)})
 		}
 		return ast.WalkContinue, nil
 	})
 	return hs
 }
 
-func attr(n ast.Node, name string, src []byte) (string, bool) {
+// attr returns the value of n's attribute name, or "" if n has none.
+func attr(n ast.Node, name string, src []byte) string {
 	v, ok := n.Attribute(name)
 	if !ok {
-		return "", false
+		return ""
 	}
-	return v.Value(src), true
+	return v.Value(src)
 }
 
 func setAttr(n ast.Node, name, value string) {

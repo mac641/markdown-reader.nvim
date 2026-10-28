@@ -25,6 +25,7 @@ import (
 	"unsafe"
 )
 
+// WebView is a window showing a web page.
 type WebView struct {
 	w       C.webview_t
 	tmpFile string // macOS: the page, written out to be loaded from disk
@@ -43,12 +44,14 @@ func New(debug bool) (*WebView, error) {
 	return &WebView{w: w}, nil
 }
 
+// SetTitle sets the window title.
 func (v *WebView) SetTitle(title string) {
 	s := C.CString(title)
 	defer C.free(unsafe.Pointer(s))
 	C.webview_set_title(v.w, s)
 }
 
+// SetSize sets the window's size in pixels.
 func (v *WebView) SetSize(width, height int) {
 	C.webview_set_size(v.w, C.int(width), C.int(height), C.WEBVIEW_HINT_NONE)
 }

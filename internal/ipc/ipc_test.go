@@ -34,7 +34,7 @@ func TestSequence(t *testing.T) {
 			t.Errorf("message %d: got %+v, want %+v", i, m, w)
 		}
 	}
-	if _, err := Read(r); err != io.EOF {
+	if _, err := Read(r); !errors.Is(err, io.EOF) {
 		t.Errorf("at end: got %v, want io.EOF", err)
 	}
 }

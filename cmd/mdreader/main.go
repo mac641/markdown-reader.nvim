@@ -164,8 +164,8 @@ func absolutePath(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if real, err := filepath.EvalSymlinks(abs); err == nil {
-		return real, nil
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return resolved, nil
 	}
 	return abs, nil
 }

@@ -36,8 +36,10 @@ const maxPath = 4096
 // on stdin is reported instead of buffered.
 const maxHeader = 64
 
+// Kind says which message a Message is.
 type Kind int
 
+// The kinds of messages, one per command.
 const (
 	Content Kind = iota
 	File
@@ -45,6 +47,8 @@ const (
 	Quit
 )
 
+// Message is one message read from stdin; which fields are set depends on
+// its Kind.
 type Message struct {
 	Kind    Kind
 	Text    []byte // Content: the Markdown
@@ -118,8 +122,8 @@ func readHeader(r *bufio.Reader) (string, error) {
 }
 
 // readPayload reads the bytes following a "<cmd> <nbytes>" header.
-func readPayload(r *bufio.Reader, cmd, args string, max uint64) ([]byte, error) {
-	n, err := parseUint(args, max)
+func readPayload(r *bufio.Reader, cmd, args string, limit uint64) ([]byte, error) {
+	n, err := parseUint(args, limit)
 	if err != nil {
 		return nil, protocolErr("bad %s size", cmd)
 	}
@@ -153,9 +157,9 @@ func parseScroll(args string) (Message, error) {
 }
 
 // parseUint accepts plain decimal digits only: no sign, no spaces.
-func parseUint(s string, max uint64) (int, error) {
+func parseUint(s string, limit uint64) (int, error) {
 	v, err := strconv.ParseUint(s, 10, 64)
-	if err != nil || v > max {
+	if err != nil || v > limit {
 		return 0, errors.New("out of range")
 	}
 	return int(v), nil
