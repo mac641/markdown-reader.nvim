@@ -6,7 +6,8 @@ type and scrolls along with your cursor.
 - GitHub-flavoured Markdown: tables, task lists, strikethrough, autolinks, footnotes and alerts (`> [!NOTE]`)
 - Syntax highlighting of fenced code blocks, in GitHub's colors
 - Live updates while typing (debounced), or on `:write` only
-- Cursor following: the line under the cursor sits at the same height in the preview as in the Neovim window
+- Scroll sync: the preview shows the part of the document the Neovim window shows, glides along as you move, and keeps
+  the cursor line in view
 - Links: relative images and links resolve against the file's directory, `#heading` links scroll the preview, links to
   other Markdown files open in Neovim at the linked heading and the preview follows, all others open in your default
   application
@@ -133,8 +134,8 @@ require("markdown-reader").setup({
   live = true,
   -- Delay after the last edit before the preview re-renders.
   debounce_ms = 150,
-  -- Scroll the preview so the cursor line sits at the same height as in
-  -- the Neovim window.
+  -- Keep the preview on the part of the document the Neovim window shows,
+  -- with the cursor line in view.
   follow_cursor = true,
   -- Start the viewer with --debug (enables the web inspector).
   debug = false,
@@ -209,7 +210,7 @@ page.js.
 To speak the protocol yourself, as the plugin does:
 
 ```sh
-{ printf 'CONTENT 8\n# Hello\n'; sleep 3; printf 'SCROLL 1 0\n'; sleep 3; printf 'QUIT\n'; } |
+{ printf 'CONTENT 8\n# Hello\n'; sleep 3; printf 'SCROLL 1 1\n'; sleep 3; printf 'QUIT\n'; } |
   bin/mdreader --stdin /tmp/hello.md
 ```
 
@@ -284,12 +285,12 @@ doc/markdown-reader.txt      :help markdown-reader
 The plugin starts `mdreader --stdin <path>`. The path names the window and is the base for relative URLs; it needn't
 exist. Messages on stdin:
 
-| Message                       | Meaning                                                                           |
-| ----------------------------- | --------------------------------------------------------------------------------- |
-| `CONTENT <n>\n` + n bytes     | replace the document with these n bytes of Markdown                               |
-| `SCROLL <line> [<percent>]\n` | show source line `<line>` (1-based) `<percent>` of the window height from the top |
-| `FILE <n>\n` + n bytes        | the document is now the file at this path: new window title and base for URLs     |
-| `QUIT\n`                      | close the window                                                                  |
+| Message                   | Meaning                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `CONTENT <n>\n` + n bytes | replace the document with these n bytes of Markdown                                                          |
+| `SCROLL <top> <cursor>\n` | the editor shows the document from source line `<top>` on, with the cursor on line `<cursor>` (both 1-based) |
+| `FILE <n>\n` + n bytes    | the document is now the file at this path: new window title and base for URLs                                |
+| `QUIT\n`                  | close the window                                                                                             |
 
 End of input also closes the window, so the viewer never outlives Neovim. Anything malformed makes it exit with status 1
 and a message on stderr, which the plugin shows. On stdout, the viewer prints `OPEN <url>\n` for each clicked link.
@@ -329,13 +330,22 @@ that argument, and small C trampolines in `glue.c` call back into exported Go fu
 **Exit.** The viewer leaves with `os.Exit` without destroying the window: the stdin goroutine may still be blocked in a
 read and could dispatch to a destroyed window otherwise.
 
-### Cursor following
+### Scroll sync
 
-On every cursor move or scroll in a previewed buffer, the plugin sends `SCROLL <line> <percent>`, where percent is the
-cursor's height in the Neovim window (only when it changed, and again after each re-render, since the layout may have
-shifted). `page.js` collects the page positions of all elements with `data-line`, finds the two blocks around the
-requested line by binary search, interpolates between them, and scrolls so that this point sits at the same height.
-Positions are cached until the content, window size or a loaded image changes the layout.
+On every cursor move or scroll in a previewed buffer, the plugin sends `SCROLL <top> <cursor>`: the first line the
+Neovim window shows and the cursor's line (only when they changed, and again after each re-render, since the layout may
+have shifted). Syncing what the window shows, rather than where the cursor sits in it, means the preview only moves when
+Neovim's text does, and always in the same direction.
+
+`page.js` collects the page positions of all elements with `data-line` and finds where a source line is rendered by
+binary search between the two blocks around it, interpolating in between. It then widens that position to the row of
+text there, so `<top>` lands at the top edge without a row of text being cut in half. The cursor's row is kept at least
+two rows away from the window's edges. The page glides to its new position: each frame covers part of the remaining way,
+so a new position takes over smoothly from wherever the last one got to. Scrolling the preview by hand stops the glide
+and leaves the page there until Neovim's view changes again; the preview never moves Neovim's cursor.
+
+Positions are cached until the content, window size or a loaded image changes the layout, which also re-applies the last
+position.
 
 ### Links
 

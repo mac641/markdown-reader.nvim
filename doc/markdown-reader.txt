@@ -140,8 +140,10 @@ debounce_ms ~
 
                                         *markdown-reader-config-follow_cursor*
 follow_cursor ~
-    Scroll the preview so that the cursor line sits at the same height as in
-    the Neovim window.
+    Keep the preview on the part of the document the Neovim window shows,
+    with the cursor line in view. The preview glides to each new position.
+    Scrolling the preview by hand leaves it there until Neovim's view
+    changes; it never moves Neovim's cursor.
 
                                                 *markdown-reader-config-debug*
 debug ~

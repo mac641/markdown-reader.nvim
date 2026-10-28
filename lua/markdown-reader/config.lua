@@ -8,8 +8,8 @@ M.defaults = {
   live = true,
   -- Delay after the last edit before the preview re-renders.
   debounce_ms = 150,
-  -- Scroll the preview so the cursor line sits at the same height as in
-  -- the Neovim window.
+  -- Keep the preview on the part of the document the Neovim window shows,
+  -- with the cursor line in view.
   follow_cursor = true,
   -- Start the viewer with --debug (enables the web inspector).
   debug = false,

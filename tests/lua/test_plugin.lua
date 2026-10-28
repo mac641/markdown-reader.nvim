@@ -65,12 +65,12 @@ vim.notify = function(msg, level)
   table.insert(notes, { msg = msg, level = level })
 end
 
-test("open sends arguments, content and cursor position", function()
+test("open sends arguments, content and what the window shows", function()
   local buf = scratch({ "# Title", "", "body" })
   vim.api.nvim_win_set_cursor(0, { 3, 0 })
   mr.open()
   check(mr.is_open(buf), "not open")
-  wait_log("SCROLL 3 %d+\n")
+  wait_log("SCROLL 1 3\n")
   local s = read_log()
   local args = "ARGS --stdin " .. vim.api.nvim_buf_get_name(buf) .. "\n"
   check(s:find(args, 1, true) ~= nil, "args: " .. s)
@@ -90,16 +90,29 @@ test("edits are debounced into one update", function()
   check(updates == 2, ("expected 2 CONTENT messages, got %d"):format(updates))
 end)
 
-test("cursor moves send SCROLL only when the position changes", function()
+test("cursor moves send SCROLL only when the view changes", function()
   scratch({ "1", "2", "3", "4" })
   mr.open()
-  wait_log("SCROLL 1 ")
+  wait_log("SCROLL 1 1\n")
   vim.api.nvim_win_set_cursor(0, { 4, 0 })
   vim.cmd.doautocmd("CursorMoved")
   vim.cmd.doautocmd("CursorMoved")
-  wait_log("SCROLL 4 ")
-  local _, n = read_log():gsub("SCROLL 4 ", "")
-  check(n == 1, ("expected one SCROLL 4, got %d"):format(n))
+  wait_log("SCROLL 1 4\n")
+  local _, n = read_log():gsub("SCROLL 1 4\n", "")
+  check(n == 1, ("expected one SCROLL 1 4, got %d"):format(n))
+end)
+
+test("scrolling the window sends its new first line", function()
+  local lines = {}
+  for i = 1, 200 do
+    lines[i] = "line " .. i
+  end
+  scratch(lines)
+  mr.open()
+  wait_log("SCROLL 1 1\n")
+  vim.cmd("normal! 100Gzt")
+  vim.cmd.doautocmd("WinScrolled")
+  wait_log("SCROLL 100 100\n")
 end)
 
 test("live = false updates on write only", function()

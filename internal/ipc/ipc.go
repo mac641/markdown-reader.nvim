@@ -7,9 +7,10 @@
 //	                                         its name is the window title
 //	                                         and its directory the base of
 //	                                         relative URLs
-//	SCROLL <line> [<percent>]\n              show source line <line> (1-based)
-//	                                         <percent> of the window height
-//	                                         from the top
+//	SCROLL <top> <cursor>\n                  the editor shows the document
+//	                                         from source line <top> on, with
+//	                                         the cursor on line <cursor>
+//	                                         (both 1-based)
 //	QUIT\n                                   close the viewer
 //
 // Numbers are decimal integers. Blank lines are ignored, and \r\n line
@@ -50,11 +51,11 @@ const (
 // Message is one message read from stdin; which fields are set depends on
 // its Kind.
 type Message struct {
-	Kind    Kind
-	Text    []byte // Content: the Markdown
-	Path    string // File
-	Line    int    // Scroll
-	Percent int    // Scroll, 0-100
+	Kind   Kind
+	Text   []byte // Content: the Markdown
+	Path   string // File
+	Top    int    // Scroll: the first line the editor shows
+	Cursor int    // Scroll: the cursor's line
 }
 
 // ProtocolError reports input that doesn't follow the protocol.
@@ -140,20 +141,18 @@ func readPayload(r *bufio.Reader, cmd, args string, limit uint64) ([]byte, error
 func parseScroll(args string) (Message, error) {
 	fields := strings.Fields(args)
 	bad := protocolErr("bad SCROLL arguments")
-	if len(fields) < 1 || len(fields) > 2 {
+	if len(fields) != 2 {
 		return Message{}, bad
 	}
-	line, err := parseUint(fields[0], 1<<32-1)
+	top, err := parseUint(fields[0], 1<<32-1)
 	if err != nil {
 		return Message{}, bad
 	}
-	percent := 0
-	if len(fields) == 2 {
-		if percent, err = parseUint(fields[1], 100); err != nil {
-			return Message{}, bad
-		}
+	cursor, err := parseUint(fields[1], 1<<32-1)
+	if err != nil {
+		return Message{}, bad
 	}
-	return Message{Kind: Scroll, Line: line, Percent: percent}, nil
+	return Message{Kind: Scroll, Top: top, Cursor: cursor}, nil
 }
 
 // parseUint accepts plain decimal digits only: no sign, no spaces.

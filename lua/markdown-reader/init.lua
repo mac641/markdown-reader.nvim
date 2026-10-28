@@ -50,7 +50,8 @@ local function push_content(buf)
   state.viewer:content(table.concat(lines, "\n") .. "\n")
 end
 
---- Sends the cursor position of the current window, if it shows buf.
+--- Sends what the current window shows of buf, if it shows buf: its first
+--- line and the cursor's line.
 ---@param force? boolean send even if unchanged
 local function push_scroll(buf, force)
   local state = states[buf]
@@ -58,16 +59,13 @@ local function push_scroll(buf, force)
   if not config.options.follow_cursor or vim.api.nvim_win_get_buf(win) ~= buf then
     return
   end
-  local line = vim.api.nvim_win_get_cursor(win)[1]
-  local row = vim.api.nvim_win_call(win, vim.fn.winline)
-  local height = vim.api.nvim_win_get_height(win)
-  local percent = math.floor((row - 1) / math.max(height - 1, 1) * 100 + 0.5)
-  percent = math.max(0, math.min(100, percent))
+  local top = vim.fn.line("w0", win)
+  local cursor = vim.api.nvim_win_get_cursor(win)[1]
 
-  local key = line .. " " .. percent
+  local key = top .. " " .. cursor
   if force or key ~= state.last_scroll then
     state.last_scroll = key
-    state.viewer:scroll(line, percent)
+    state.viewer:scroll(top, cursor)
   end
 end
 

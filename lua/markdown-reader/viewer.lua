@@ -78,10 +78,12 @@ function Viewer:file(path)
   self:send(("FILE %d\n%s\n"):format(#path, path))
 end
 
----@param line integer 1-based source line
----@param percent integer 0-100, height in the window to show it at
-function Viewer:scroll(line, percent)
-  self:send(("SCROLL %d %d\n"):format(line, percent))
+--- Tells the viewer what the editor shows: the document from source line
+--- top on, with the cursor on line cursor (both 1-based).
+---@param top integer
+---@param cursor integer
+function Viewer:scroll(top, cursor)
+  self:send(("SCROLL %d %d\n"):format(top, cursor))
 end
 
 --- Asks the viewer to quit and makes sure it does: QUIT plus closing stdin,

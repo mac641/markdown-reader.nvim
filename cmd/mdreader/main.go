@@ -48,7 +48,7 @@ type viewer struct {
 	ready    bool    // page.js has loaded and defined window.mdr
 	base     *string // a base URI that arrived before ready
 	pending  *string // the latest content that arrived before ready
-	scroll   *[2]int // the latest line and percent, if any
+	scroll   *[2]int // the latest top and cursor line, if any
 	exitCode int
 }
 
@@ -202,8 +202,8 @@ func (v *viewer) readStdin() {
 			}
 			v.wv.Dispatch(func() { v.showFile(title, baseURI) })
 		case ipc.Scroll:
-			line, percent := msg.Line, msg.Percent
-			v.wv.Dispatch(func() { v.showScroll(line, percent) })
+			top, cursor := msg.Top, msg.Cursor
+			v.wv.Dispatch(func() { v.showScroll(top, cursor) })
 		case ipc.Quit:
 			v.wv.Dispatch(func() { v.quit(0) })
 			return
@@ -242,15 +242,15 @@ func (v *viewer) showContent(html string) {
 	v.wv.Eval("mdr.update(" + string(js) + ");")
 }
 
-func (v *viewer) showScroll(line, percent int) {
-	v.scroll = &[2]int{line, percent}
+func (v *viewer) showScroll(top, cursor int) {
+	v.scroll = &[2]int{top, cursor}
 	if v.ready {
 		v.evalScroll()
 	}
 }
 
 func (v *viewer) evalScroll() {
-	v.wv.Eval(fmt.Sprintf("mdr.scrollTo(%d, %d);", v.scroll[0], v.scroll[1]))
+	v.wv.Eval(fmt.Sprintf("mdr.follow(%d, %d);", v.scroll[0], v.scroll[1]))
 }
 
 func (v *viewer) quit(code int) {
