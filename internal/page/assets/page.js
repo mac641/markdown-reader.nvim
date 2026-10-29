@@ -6,6 +6,8 @@
   // positions, and the rows of text rendered in them, are cached until the
   // layout may have changed.
   let anchors = null;
+  let lines = 0; // the document's source lines
+
 
   function collectAnchors() {
     // A virtual anchor at the top lets lines before the first block
@@ -18,6 +20,9 @@
       if (line <= list[list.length - 1].line) continue;
       list.push({ line, top: el.getBoundingClientRect().top + window.scrollY, el });
     }
+    // And one at the end, for the lines after the last block's start.
+    const last = list[list.length - 1].line;
+    list.push({ line: Math.max(lines, last) + 1, top: document.documentElement.scrollHeight, el: null });
     return list;
   }
 
@@ -153,29 +158,48 @@
   // Images change the layout once they've loaded; load doesn't bubble.
   document.addEventListener('load', invalidate, true);
 
-  // Shows what the editor shows: source line `top` at the top of the
-  // window, and the cursor's line a few rows away from the edges.
-  function follow(top, cursor) {
-    following = [top, cursor];
+  // Where source line `line` starts, as a page position; the page's
+  // padding belongs to the first and last line.
+  function start(line) {
+    if (line <= 1) return 0;
+    if (line > lines) return document.documentElement.scrollHeight;
+    return locate(line).top;
+  }
+
+  // Shows what the editor shows, source lines `top` to `bottom`, with the
+  // cursor's line a few rows away from the edges.
+  function follow(top, bottom, cursor) {
+    following = [top, bottom, cursor];
     const instant = !followed;
     followed = true;
     const height = window.innerHeight;
+    const max = document.documentElement.scrollHeight - height;
+    // The editor's lines rarely take up exactly one window here. Line up
+    // their start with the top edge when the editor shows the start of the
+    // document, their end with the bottom edge when it shows the end, and
+    // shift gradually in between, by how much is hidden above and below.
+    const from = start(top);
+    const to = start(bottom + 1);
+    const above = top - 1;
+    const below = Math.max(lines - bottom, 0);
+    let y = from + (to - from - height) * (above + below ? above / (above + below) : 0);
     const margin = Math.min(2 * lineHeight(), height / 4);
     const c = locate(cursor);
-    let y = locate(top).top;
     y = Math.max(y, c.bottom + margin - height);
     y = Math.min(y, c.top - margin);
     // Don't cut a row of text in half at the top edge: show it whole, or,
-    // if more than half of it is out of sight, not at all.
-    const row = rowAt(y);
+    // if more than half of it is out of sight, not at all. At the ends of
+    // the page, the end wins.
+    const row = y > 0 && y < max && rowAt(y);
     if (row) y = y - row[0] < row[1] - y ? row[0] : row[1];
-    const max = document.documentElement.scrollHeight - height;
     glideTo(Math.max(0, Math.min(y, max)), instant);
   }
 
   window.mdr = {
-    update(html) {
+    // Replaces the document, which has n source lines.
+    update(html, n) {
       content.innerHTML = html;
+      lines = n;
       anchors = null;
     },
 

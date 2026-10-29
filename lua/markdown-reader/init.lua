@@ -51,7 +51,7 @@ local function push_content(buf)
 end
 
 --- Sends what the current window shows of buf, if it shows buf: its first
---- line and the cursor's line.
+--- and last line and the cursor's line.
 ---@param force? boolean send even if unchanged
 local function push_scroll(buf, force)
   local state = states[buf]
@@ -60,12 +60,13 @@ local function push_scroll(buf, force)
     return
   end
   local top = vim.fn.line("w0", win)
+  local bottom = vim.fn.line("w$", win)
   local cursor = vim.api.nvim_win_get_cursor(win)[1]
 
-  local key = top .. " " .. cursor
+  local key = ("%d %d %d"):format(top, bottom, cursor)
   if force or key ~= state.last_scroll then
     state.last_scroll = key
-    state.viewer:scroll(top, cursor)
+    state.viewer:scroll(top, bottom, cursor)
   end
 end
 

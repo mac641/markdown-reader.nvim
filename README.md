@@ -210,7 +210,7 @@ page.js.
 To speak the protocol yourself, as the plugin does:
 
 ```sh
-{ printf 'CONTENT 8\n# Hello\n'; sleep 3; printf 'SCROLL 1 1\n'; sleep 3; printf 'QUIT\n'; } |
+{ printf 'CONTENT 8\n# Hello\n'; sleep 3; printf 'SCROLL 1 1 1\n'; sleep 3; printf 'QUIT\n'; } |
   bin/mdreader --stdin /tmp/hello.md
 ```
 
@@ -285,12 +285,12 @@ doc/markdown-reader.txt      :help markdown-reader
 The plugin starts `mdreader --stdin <path>`. The path names the window and is the base for relative URLs; it needn't
 exist. Messages on stdin:
 
-| Message                   | Meaning                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `CONTENT <n>\n` + n bytes | replace the document with these n bytes of Markdown                                                          |
-| `SCROLL <top> <cursor>\n` | the editor shows the document from source line `<top>` on, with the cursor on line `<cursor>` (both 1-based) |
-| `FILE <n>\n` + n bytes    | the document is now the file at this path: new window title and base for URLs                                |
-| `QUIT\n`                  | close the window                                                                                             |
+| Message                            | Meaning                                                                                               |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `CONTENT <n>\n` + n bytes          | replace the document with these n bytes of Markdown                                                   |
+| `SCROLL <top> <bottom> <cursor>\n` | the editor shows source lines `<top>` to `<bottom>`, with the cursor on line `<cursor>` (all 1-based) |
+| `FILE <n>\n` + n bytes             | the document is now the file at this path: new window title and base for URLs                         |
+| `QUIT\n`                           | close the window                                                                                      |
 
 End of input also closes the window, so the viewer never outlives Neovim. Anything malformed makes it exit with status 1
 and a message on stderr, which the plugin shows. On stdout, the viewer prints `OPEN <url>\n` for each clicked link.
@@ -332,19 +332,22 @@ read and could dispatch to a destroyed window otherwise.
 
 ### Scroll sync
 
-On every cursor move or scroll in a previewed buffer, the plugin sends `SCROLL <top> <cursor>`: the first line the
-Neovim window shows and the cursor's line (only when they changed, and again after each re-render, since the layout may
-have shifted). Syncing what the window shows, rather than where the cursor sits in it, means the preview only moves when
-Neovim's text does, and always in the same direction.
+On every cursor move or scroll in a previewed buffer, the plugin sends `SCROLL <top> <bottom> <cursor>`: the first and
+last line the Neovim window shows and the cursor's line (only when they changed, and again after each re-render, since
+the layout may have shifted). Syncing what the window shows, rather than where the cursor sits in it, means the preview
+only moves when Neovim's text does, and always in the same direction.
 
 `page.js` collects the page positions of all elements with `data-line` and finds where a source line is rendered by
 binary search between the two blocks around it, interpolating in between. It then widens that position to the row of
-text there, so `<top>` lands at the top edge without a row of text being cut in half. The cursor's row is kept at least
-two rows away from the window's edges. The page glides to its new position like a critically damped spring: it speeds up
-from rest and slows down into place, and a new position takes over at the current speed, so holding a key gives one even
-motion. Jumps longer than half the window, like `gg` or `G`, skip to half a window before the target and glide the rest.
-Scrolling the preview by hand stops the glide and leaves the page there until Neovim's view changes again; the preview
-never moves Neovim's cursor.
+text there. The lines Neovim shows rarely fill exactly one preview window, so the page lines up their start with its top
+edge while Neovim shows the start of the document, their end with its bottom edge while it shows the end, and shifts
+gradually in between, by how many lines are hidden above and below. The page's padding counts as part of the first and
+last line, so the edges of the document never make the page jump. The cursor's row is kept at least two rows away from
+the window's edges, and no row of text is cut in half at the top edge. The page glides to its new position like a
+critically damped spring: it speeds up from rest and slows down into place, and a new position takes over at the current
+speed, so holding a key gives one even motion. Jumps longer than half the window, like `gg` or `G`, skip to half a
+window before the target and glide the rest. Scrolling the preview by hand stops the glide and leaves the page there
+until Neovim's view changes again; the preview never moves Neovim's cursor.
 
 Positions are cached until the content, window size or a loaded image changes the layout, which also re-applies the last
 position.

@@ -7,10 +7,10 @@
 //	                                         its name is the window title
 //	                                         and its directory the base of
 //	                                         relative URLs
-//	SCROLL <top> <cursor>\n                  the editor shows the document
-//	                                         from source line <top> on, with
-//	                                         the cursor on line <cursor>
-//	                                         (both 1-based)
+//	SCROLL <top> <bottom> <cursor>\n         the editor shows source lines
+//	                                         <top> to <bottom>, with the
+//	                                         cursor on line <cursor> (all
+//	                                         1-based)
 //	QUIT\n                                   close the viewer
 //
 // Numbers are decimal integers. Blank lines are ignored, and \r\n line
@@ -55,6 +55,7 @@ type Message struct {
 	Text   []byte // Content: the Markdown
 	Path   string // File
 	Top    int    // Scroll: the first line the editor shows
+	Bottom int    // Scroll: the last line the editor shows
 	Cursor int    // Scroll: the cursor's line
 }
 
@@ -141,18 +142,18 @@ func readPayload(r *bufio.Reader, cmd, args string, limit uint64) ([]byte, error
 func parseScroll(args string) (Message, error) {
 	fields := strings.Fields(args)
 	bad := protocolErr("bad SCROLL arguments")
-	if len(fields) != 2 {
+	if len(fields) != 3 {
 		return Message{}, bad
 	}
-	top, err := parseUint(fields[0], 1<<32-1)
-	if err != nil {
-		return Message{}, bad
+	var n [3]int
+	for i, f := range fields {
+		v, err := parseUint(f, 1<<32-1)
+		if err != nil {
+			return Message{}, bad
+		}
+		n[i] = v
 	}
-	cursor, err := parseUint(fields[1], 1<<32-1)
-	if err != nil {
-		return Message{}, bad
-	}
-	return Message{Kind: Scroll, Top: top, Cursor: cursor}, nil
+	return Message{Kind: Scroll, Top: n[0], Bottom: n[1], Cursor: n[2]}, nil
 }
 
 // parseUint accepts plain decimal digits only: no sign, no spaces.

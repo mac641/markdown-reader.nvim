@@ -13,16 +13,16 @@ func reader(s string) *bufio.Reader { return bufio.NewReader(strings.NewReader(s
 func TestSequence(t *testing.T) {
 	r := reader("CONTENT 7\n# hi\nyo\n" +
 		"FILE 10\n/a b/ü.md\n" +
-		"SCROLL 12 40\r\n" +
+		"SCROLL 12 60 40\r\n" +
 		"\n" +
-		"SCROLL 3 3\n" +
+		"SCROLL 3 3 3\n" +
 		"QUIT\n")
 
 	want := []Message{
 		{Kind: Content, Text: []byte("# hi\nyo")},
 		{Kind: File, Path: "/a b/ü.md"},
-		{Kind: Scroll, Top: 12, Cursor: 40},
-		{Kind: Scroll, Top: 3, Cursor: 3},
+		{Kind: Scroll, Top: 12, Bottom: 60, Cursor: 40},
+		{Kind: Scroll, Top: 3, Bottom: 3, Cursor: 3},
 		{Kind: Quit},
 	}
 	for i, w := range want {
@@ -30,7 +30,7 @@ func TestSequence(t *testing.T) {
 		if err != nil {
 			t.Fatalf("message %d: %v", i, err)
 		}
-		if m.Kind != w.Kind || string(m.Text) != string(w.Text) || m.Path != w.Path || m.Top != w.Top || m.Cursor != w.Cursor {
+		if m.Kind != w.Kind || string(m.Text) != string(w.Text) || m.Path != w.Path || m.Top != w.Top || m.Bottom != w.Bottom || m.Cursor != w.Cursor {
 			t.Errorf("message %d: got %+v, want %+v", i, m, w)
 		}
 	}
@@ -63,10 +63,10 @@ func TestErrors(t *testing.T) {
 		"FILE 4097\n",
 		"FILE 5\n/a",
 		"SCROLL\n",
-		"SCROLL 1\n",
-		"SCROLL 1 2 3\n",
-		"SCROLL 1.5 2\n",
-		"SCROLL 1 -2\n",
+		"SCROLL 1 2\n",
+		"SCROLL 1 2 3 4\n",
+		"SCROLL 1.5 2 3\n",
+		"SCROLL 1 2 -3\n",
 		"QUIT now\n",
 		"QUIT", // unterminated
 		"CONTENT " + strings.Repeat("1", 70) + "\n",

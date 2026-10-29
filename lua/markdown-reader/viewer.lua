@@ -78,12 +78,13 @@ function Viewer:file(path)
   self:send(("FILE %d\n%s\n"):format(#path, path))
 end
 
---- Tells the viewer what the editor shows: the document from source line
---- top on, with the cursor on line cursor (both 1-based).
+--- Tells the viewer what the editor shows: source lines top to bottom, with
+--- the cursor on line cursor (all 1-based).
 ---@param top integer
+---@param bottom integer
 ---@param cursor integer
-function Viewer:scroll(top, cursor)
-  self:send(("SCROLL %d %d\n"):format(top, cursor))
+function Viewer:scroll(top, bottom, cursor)
+  self:send(("SCROLL %d %d %d\n"):format(top, bottom, cursor))
 end
 
 --- Asks the viewer to quit and makes sure it does: QUIT plus closing stdin,

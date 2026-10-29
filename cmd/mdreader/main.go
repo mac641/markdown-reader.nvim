@@ -17,6 +17,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -45,10 +46,10 @@ func init() {
 // other goroutines hand work over with wv.Dispatch.
 type viewer struct {
 	wv       *webview.WebView
-	ready    bool    // page.js has loaded and defined window.mdr
-	base     *string // a base URI that arrived before ready
-	pending  *string // the latest content that arrived before ready
-	scroll   *[2]int // the latest top and cursor line, if any
+	ready    bool     // page.js has loaded and defined window.mdr
+	base     *string  // a base URI that arrived before ready
+	pending  *content // the latest content that arrived before ready
+	scroll   *[3]int  // the latest SCROLL lines (top, bottom, cursor), if any
 	exitCode int
 }
 
@@ -193,7 +194,8 @@ func (v *viewer) readStdin() {
 				fmt.Fprintln(os.Stderr, "mdreader: failed to render content:", err)
 				continue
 			}
-			v.wv.Dispatch(func() { v.showContent(html) })
+			c := content{html, lineCount(msg.Text)}
+			v.wv.Dispatch(func() { v.showContent(c) })
 		case ipc.File:
 			title, baseURI, err := describe(msg.Path)
 			if err != nil {
@@ -202,8 +204,8 @@ func (v *viewer) readStdin() {
 			}
 			v.wv.Dispatch(func() { v.showFile(title, baseURI) })
 		case ipc.Scroll:
-			top, cursor := msg.Top, msg.Cursor
-			v.wv.Dispatch(func() { v.showScroll(top, cursor) })
+			lines := [3]int{msg.Top, msg.Bottom, msg.Cursor}
+			v.wv.Dispatch(func() { v.showScroll(lines) })
 		case ipc.Quit:
 			v.wv.Dispatch(func() { v.quit(0) })
 			return
@@ -233,24 +235,40 @@ func (v *viewer) setBase(baseURI string) {
 	v.wv.Eval("mdr.setBase(" + string(js) + ");")
 }
 
-func (v *viewer) showContent(html string) {
-	if !v.ready {
-		v.pending = &html
-		return
-	}
-	js, _ := json.Marshal(html) // a string always marshals
-	v.wv.Eval("mdr.update(" + string(js) + ");")
+// content is a rendered document.
+type content struct {
+	html  string
+	lines int // in the Markdown
 }
 
-func (v *viewer) showScroll(top, cursor int) {
-	v.scroll = &[2]int{top, cursor}
+// lineCount counts lines like an editor: a final newline ends the last
+// line rather than starting another one.
+func lineCount(md []byte) int {
+	n := bytes.Count(md, []byte("\n"))
+	if len(md) > 0 && md[len(md)-1] != '\n' {
+		n++
+	}
+	return n
+}
+
+func (v *viewer) showContent(c content) {
+	if !v.ready {
+		v.pending = &c
+		return
+	}
+	js, _ := json.Marshal(c.html) // a string always marshals
+	v.wv.Eval(fmt.Sprintf("mdr.update(%s, %d);", js, c.lines))
+}
+
+func (v *viewer) showScroll(lines [3]int) {
+	v.scroll = &lines
 	if v.ready {
 		v.evalScroll()
 	}
 }
 
 func (v *viewer) evalScroll() {
-	v.wv.Eval(fmt.Sprintf("mdr.follow(%d, %d);", v.scroll[0], v.scroll[1]))
+	v.wv.Eval(fmt.Sprintf("mdr.follow(%d, %d, %d);", v.scroll[0], v.scroll[1], v.scroll[2]))
 }
 
 func (v *viewer) quit(code int) {
