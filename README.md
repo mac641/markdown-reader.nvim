@@ -327,6 +327,12 @@ page to a temporary file and calls WKWebView's `loadFileURL:allowingReadAccessTo
 argument; Go closures can't be passed to C, so the binding passes a `cgo.Handle` (a number standing for a Go value) as
 that argument, and small C trampolines in `glue.c` call back into exported Go functions that look the closure up again.
 
+**GTK renderer.** GTK 4.16 and later draw with Vulkan by default, and setting Vulkan up queries every GPU. On laptops
+with a second GPU that is powered down, such as an NVIDIA card next to Intel graphics, that wakes the card and delays
+the window by about two seconds. So on Linux the viewer sets `GSK_RENDERER` to GTK's OpenGL renderer (`gl`, or `ngl`
+before GTK 4.18) before GTK starts, which uses the GPU driving the display. If OpenGL fails, GTK falls back to its usual
+choices. Set `GSK_RENDERER` yourself to override it, e.g. `GSK_RENDERER=vulkan`.
+
 **Exit.** The viewer leaves with `os.Exit` without destroying the window: the stdin goroutine may still be blocked in a
 read and could dispatch to a destroyed window otherwise.
 
