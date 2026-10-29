@@ -315,9 +315,9 @@ colors of chroma's `github` and `github-dark` styles to the page, without their 
 page's look.
 
 **The page** is loaded once, with a `<base href>` pointing at the Markdown file's directory, so relative images and
-links resolve as on disk. Later updates replace only the body through `mdr.update(html)` in `page.js`, keeping scroll
-position and avoiding a reload flash. Content or scroll positions that arrive before `page.js` has loaded are kept and
-replayed when it calls `window.mdrReady()`.
+links resolve as on disk. Later updates replace only the body through `mdr.update(html, lines)` in `page.js`, keeping
+scroll position and avoiding a reload flash. Content or scroll positions that arrive before `page.js` has loaded are
+kept and replayed when it calls `window.mdrReady()`.
 
 Loading the page needs a base URL and local file access, which webview's own `SetHtml` doesn't offer, so
 `internal/webview` has a loader per OS: `load_linux.go` calls `webkit_web_view_load_html`; `load_darwin.go` writes the
