@@ -3,7 +3,7 @@
 A Markdown preview for Neovim that renders in a native window instead of a browser tab. The preview updates while you
 type and scrolls along with your cursor.
 
-- GitHub-flavoured Markdown: tables, task lists, strikethrough, autolinks, footnotes and alerts (`> [!NOTE]`)
+- GitHub-flavored Markdown: tables, task lists, strikethrough, autolinks, footnotes and alerts (`> [!NOTE]`)
 - Syntax highlighting of fenced code blocks, in GitHub's colors
 - Live updates while typing (debounced), or on `:write` only
 - Scroll sync: the preview shows the part of the document the Neovim window shows, glides along as you move, and keeps
@@ -26,7 +26,7 @@ Linux, WKWebView on macOS). The Lua plugin starts and stops it and talks to it o
 
 ## Getting started
 
-### Install the build dependencies
+### Dependencies
 
 **Ubuntu / Debian**
 
@@ -83,7 +83,19 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
       desc = "Close Markdown preview",
     },
   },
-  opts = {},
+  opts = {
+    -- Path to the viewer. nil uses <plugin>/bin/mdreader, built by `make`.
+    binary = nil,
+    -- Update the preview while typing; false updates on :write only.
+    live = true,
+    -- Delay after the last edit before the preview re-renders.
+    debounce_ms = 150,
+    -- Keep the preview on the part of the document the Neovim window shows,
+    -- with the cursor line in view.
+    follow_cursor = true,
+    -- Start the viewer with --debug (enables the web inspector).
+    debug = false,
+  },
 }
 ```
 
@@ -99,46 +111,8 @@ require("markdown-reader").setup()
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "markdown",
   callback = function(ev)
-    vim.keymap.set("n", "<leader>mp", "<cmd>MarkdownReader<cr>", { buffer = ev.buf })
+    vim.keymap.set("n", "<leader>mp", function() require("markdown-reader").toggle() end, { buffer = ev.buf })
   end,
-})
-```
-
-### 3. Check it
-
-Run `:checkhealth markdown-reader`. It checks that `setup()` was called, that Neovim runs in a Wayland session on Linux,
-and that the viewer is built and starts, which catches missing GTK or WebKit libraries. Then open a Markdown file and
-run `:MarkdownReader`.
-
-## Usage
-
-|                                  |                                          |
-| -------------------------------- | ---------------------------------------- |
-| `:MarkdownReader`                | toggle the preview of the current buffer |
-| `:MarkdownReader open` / `close` | open or close it                         |
-
-From Lua: `require("markdown-reader").open()`, `.close()`, `.toggle()` and `.is_open()`, each taking an optional buffer
-number.
-
-`:help markdown-reader` has all of this README's user documentation inside Neovim.
-
-## Configuration
-
-`setup()` defines the command and takes these options (the defaults):
-
-```lua
-require("markdown-reader").setup({
-  -- Path to the viewer. nil uses <plugin>/bin/mdreader, built by `make`.
-  binary = nil,
-  -- Update the preview while typing; false updates on :write only.
-  live = true,
-  -- Delay after the last edit before the preview re-renders.
-  debounce_ms = 150,
-  -- Keep the preview on the part of the document the Neovim window shows,
-  -- with the cursor line in view.
-  follow_cursor = true,
-  -- Start the viewer with --debug (enables the web inspector).
-  debug = false,
 })
 ```
 
@@ -295,14 +269,14 @@ exist. Messages on stdin:
 End of input also closes the window, so the viewer never outlives Neovim. Anything malformed makes it exit with status 1
 and a message on stderr, which the plugin shows. On stdout, the viewer prints `OPEN <url>\n` for each clicked link.
 
-CONTENT carries a byte count rather than a terminator, so documents may contain anything, including lines that look like
-messages.
+`CONTENT` carries a byte count rather than a terminator, so documents may contain anything, including lines that look
+like messages.
 
 ### The viewer
 
 **Threads.** GTK and Cocoa must be driven from the process's main thread. `main.go` locks the main goroutine to it
-(`runtime.LockOSThread` in `init`) and runs the event loop there. Background goroutines — one reading stdin, one waiting
-for SIGTERM/SIGINT/SIGHUP — never touch the window; they hand closures to `WebView.Dispatch`, which webview runs on the
+(`runtime.LockOSThread` in `init`) and runs the event loop there. Background goroutines - one reading stdin, one waiting
+for SIGTERM/SIGINT/SIGHUP - never touch the window; they hand closures to `WebView.Dispatch`, which webview runs on the
 main thread. All viewer state is therefore only accessed from one thread and needs no locks.
 
 **Rendering.** Markdown is rendered on the stdin goroutine, so a large document doesn't block the window.
