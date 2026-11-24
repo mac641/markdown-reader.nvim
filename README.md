@@ -349,3 +349,22 @@ page's `<base>`, and its content. If that buffer already has a preview of its ow
 `close()` sends `QUIT` and closes stdin. If the viewer is still running after 500 ms it gets SIGTERM, and after another
 second SIGKILL. If the viewer exits on its own (its window was closed), the plugin forgets it; if it exits with an
 error, the plugin shows its stderr.
+
+## License
+
+markdown-reader.nvim is released under the [MIT License](LICENSE).
+
+The viewer is built from these third-party components, all under licenses compatible with MIT:
+
+| Component                                                       | Used for                            | License                                                    |
+| --------------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| [webview](https://github.com/webview/webview)                   | native window with the web view     | MIT, vendored with its license in `third_party/webview`    |
+| [goldmark](https://github.com/yuin/goldmark)                    | Markdown rendering                  | MIT                                                        |
+| [goldmark-alert](https://github.com/yuin/goldmark-alert)        | GitHub alerts (`> [!NOTE]`)         | MIT                                                        |
+| [Chroma](https://github.com/alecthomas/chroma)                  | syntax highlighting                 | MIT                                                        |
+| [regexp2](https://github.com/dlclark/regexp2)                   | regular expressions, used by Chroma | MIT (parts ported from .NET, also MIT)                     |
+| [GTK 4](https://gtk.org) and [WebKitGTK](https://webkitgtk.org) | window and web engine on Linux      | LGPL 2.1 or later (WebKitGTK also BSD), linked dynamically |
+| WebKit (WKWebView)                                              | web engine on macOS                 | ships with macOS                                           |
+
+Go modules that only Chroma's own tests use (`alecthomas/assert`, `alecthomas/repr`, `hexops/gotextdiff`) appear in
+`go.sum` but aren't part of the viewer.
