@@ -33,13 +33,13 @@ import (
 
 var (
 	mdParser = parser.New(
-		parser.WithExtensions(extension.GFMParser, extension.FootnoteParser, alert.Parser),
+		parser.WithExtensions(extension.NewGFMParser(), extension.NewFootnoteParser(), alert.NewParser()),
 		parser.WithASTTransformers(util.Prioritized[parser.ASTTransformer](blockTransformer{}, 1000)),
 	)
 	mdRenderer = html.New(
 		// Raw HTML in the document is shown as such, like on GitHub.
 		html.WithUnsafe(),
-		html.WithExtensions(extension.GFMHTMLRenderer, extension.FootnoteHTMLRenderer, alert.HTMLRenderer,
+		html.WithExtensions(extension.NewGFMHTMLRenderer(), extension.NewFootnoteHTMLRenderer(), alert.NewHTMLRenderer(),
 			// Last, so that its renderers win.
 			overrides{}),
 	)
