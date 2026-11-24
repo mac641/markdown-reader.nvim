@@ -1,5 +1,10 @@
 # markdown-reader.nvim
 
+> [!NOTE]
+> This plugin is vibe-coded and was created as a side-project in my spare time. I reviewed and tested it by hand on all
+> platforms that are marked _tested_ below. If you have any issues / feature requests, feel free to
+> [open an issue](https://github.com/mac641/markdown-reader.nvim/issues). ...and please bear with me. 🙃
+
 A Markdown preview for Neovim that renders in a native window instead of a browser tab. The preview updates while you
 type and scrolls along with your cursor.
 
@@ -28,7 +33,7 @@ Linux, WKWebView on macOS). The Lua plugin starts and stops it and talks to it o
 
 ### Dependencies
 
-**Ubuntu / Debian**
+**Ubuntu / Debian** (_tested_)
 
 ```sh
 sudo apt install golang-go build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
@@ -46,12 +51,12 @@ sudo dnf install golang gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)
 sudo zypper install go gcc-c++ make 'pkgconfig(gtk4)' 'pkgconfig(webkitgtk-6.0)'
 ```
 
-**NixOS**
+**NixOS** (_tested_)
 
 Nothing to install besides `make`: NixOS doesn't expose libraries' headers to builds, so on NixOS `make` runs itself
 inside the repository's `shell.nix`, which provides Go, GTK 4 and WebKitGTK.
 
-**macOS**
+**macOS** (_tested_)
 
 ```sh
 xcode-select --install   # C/C++ compiler, make
@@ -190,15 +195,14 @@ To speak the protocol yourself, as the plugin does:
 
 ### Tests
 
-|                 |                                                                                                                       |
-| --------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `make test-go`  | unit tests of the protocol parser, page builder and renderer (`internal/*/..._test.go`); no WebKit or display needed  |
-| `make test-lua` | the plugin, against `tests/lua/fake-viewer.sh`, a shell script that logs what it receives instead of opening a window |
+- `make test-go`: unit tests of the protocol parser, page builder and renderer (`internal/*/..._test.go`); no WebKit or
+  display needed
+- `make test-lua`: the plugin, against `tests/lua/fake-viewer.sh`, a shell script that logs what it receives instead of
+  opening a window
 
 Neither needs a display. CI (`.github/workflows/ci.yml`) runs both on Linux and macOS, plus golangci-lint, gofmt,
-shellcheck and `deno fmt --check`. It also builds the viewer with each install command above (Ubuntu, Fedora and
-openSUSE containers, and `shell.nix`). The window itself is checked by hand, e.g. with `tests/fixtures/sample.md`, which
-uses every supported feature.
+shellcheck and `deno fmt --check`. It also builds the viewer with each install command above. The window itself is
+checked by hand, e.g. with `tests/fixtures/sample.md`, which uses every supported feature.
 
 ### External Dependencies
 
@@ -352,7 +356,7 @@ error, the plugin shows its stderr.
 
 ## License
 
-markdown-reader.nvim is released under the [MIT License](LICENSE).
+**markdown-reader.nvim** is released under the [MIT License](./LICENSE).
 
 The viewer is built from these third-party components, all under licenses compatible with MIT:
 
